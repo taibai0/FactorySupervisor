@@ -31,11 +31,11 @@
             components = new System.ComponentModel.Container();
             start_button = new Button();
             stop_button = new Button();
-            dataGridView1 = new DataGridView();
+            dgvTags = new DataGridView();
             lblStatus = new Label();
-            timer1 = new System.Windows.Forms.Timer(components);
+            timerRefresh = new System.Windows.Forms.Timer(components);
             label1 = new Label();
-            ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)dgvTags).BeginInit();
             SuspendLayout();
             // 
             // start_button
@@ -58,28 +58,29 @@
             stop_button.UseVisualStyleBackColor = true;
             stop_button.Click += stop_button_Click;
             // 
-            // dataGridView1
+            // dgvTags
             // 
-            dataGridView1.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridView1.Location = new Point(20, 11);
-            dataGridView1.Name = "dataGridView1";
-            dataGridView1.ReadOnly = true;
-            dataGridView1.RowHeadersWidth = 72;
-            dataGridView1.Size = new Size(1579, 362);
-            dataGridView1.TabIndex = 2;
+            dgvTags.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dgvTags.Location = new Point(20, 11);
+            dgvTags.Name = "dgvTags";
+            dgvTags.ReadOnly = true;
+            dgvTags.RowHeadersWidth = 72;
+            dgvTags.Size = new Size(1579, 362);
+            dgvTags.TabIndex = 2;
             // 
             // lblStatus
             // 
             lblStatus.AutoSize = true;
-            lblStatus.Location = new Point(247, 399);
+            lblStatus.Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            lblStatus.Location = new Point(685, 37);
             lblStatus.Name = "lblStatus";
-            lblStatus.Size = new Size(73, 28);
+            lblStatus.Size = new Size(93, 36);
             lblStatus.TabIndex = 3;
-            lblStatus.Text = "label1";
+            lblStatus.Text = "status";
             // 
-            // timer1
+            // timerRefresh
             // 
-            timer1.Tick += timer1_Tick;
+            timerRefresh.Tick += timerRefresh_Tick;
             // 
             // label1
             // 
@@ -89,7 +90,6 @@
             label1.Size = new Size(73, 28);
             label1.TabIndex = 4;
             label1.Text = "label1";
-            
             // 
             // Form1
             // 
@@ -98,13 +98,13 @@
             ClientSize = new Size(1645, 704);
             Controls.Add(label1);
             Controls.Add(lblStatus);
-            Controls.Add(dataGridView1);
+            Controls.Add(dgvTags);
             Controls.Add(stop_button);
             Controls.Add(start_button);
             Name = "Form1";
             Text = "Form1";
             Load += Form1_Load;
-            ((System.ComponentModel.ISupportInitialize)dataGridView1).EndInit();
+            ((System.ComponentModel.ISupportInitialize)dgvTags).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -113,9 +113,9 @@
 
         private Button start_button;
         private Button stop_button;
-        private DataGridView dataGridView1;
+        private DataGridView dgvTags;
         private Label lblStatus;
-        private System.Windows.Forms.Timer timer1;
+        private System.Windows.Forms.Timer timerRefresh;
         private Label label1;
     }
 }
