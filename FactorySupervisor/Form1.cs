@@ -10,12 +10,21 @@ namespace FactorySupervisor
 {
     public partial class Form1 : Form
     {
+        //报警服务
+        private readonly IAlarmRuleRepository _alarmRuleRepository=new InMemoryAlarmRuleRepository();
+        private readonly IAlarmStateStore _alarmStateStore=new InMemoryAlarmStateStore();
+        private AlarmEvaluationService? _alarmEvaluationService;
+        private Task? _acquisitionTask;
+        private Task? _alarmTask;
+
         private bool _isRunning;
         private DateTimeOffset? _lastUpdateTime;
 
+        //datagridview显示元素
         private readonly BindingList<TagGridRow> _rows = new();
         private readonly Dictionary<Guid, TagGridRow> _rowMap = new();
 
+        //状态读取服务
         private readonly ITagValueCache _cache = new InMemoryTagValueCache();
         private readonly IDeviceRepository _deviceRepo = new InMemoryDeviceRepository();
         private readonly ITagRepository _tagRepo = new InMemoryTagRepository();
@@ -44,32 +53,20 @@ namespace FactorySupervisor
             if (_isRunning) return;
 
             await InitTagRowsAsync();
+            
 
             _cts = new CancellationTokenSource();
+          
             _acquisitionService = new AcquisitionService(_deviceRepo, _tagRepo, _factory, _cache);
-
+            _alarmEvaluationService = new AlarmEvaluationService(
+                        _alarmRuleRepository,
+                        _cache,
+                        _alarmStateStore);
             _isRunning = true;
             UpdateStatus();
 
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await _acquisitionService.RunAsync(_cts.Token);
-                }
-                catch (OperationCanceledException)
-                {
-                    // Normal stop.
-                }
-                catch (Exception ex)
-                {
-                    BeginInvoke(() =>
-                    {
-                        _isRunning = false;
-                        lblStatus.Text = $"Error: {ex.Message}";
-                    });
-                }
-            });
+            _acquisitionTask = RunBackgroundAsync(_acquisitionService.RunAsync);
+            _alarmTask=RunBackgroundAsync(_alarmEvaluationService.RunAsync);
         }
 
         private void stop_button_Click(object sender, EventArgs e)
@@ -115,6 +112,26 @@ namespace FactorySupervisor
             UpdateStatus();
             dgvTags.Refresh();
             ApplyRowStyle();
+            RefreshAlarmGrid();
+        }
+
+        //刷新报警表
+        private void RefreshAlarmGrid()
+        {
+            var rows = _alarmStateStore.GetCurrentAlarms()
+                .Select(a => new
+                {
+                    a.RuleName,
+                    Leave = a.Level.ToString(),
+                    State = a.State.ToString(),
+                    a.TriggerValue,
+                    TriggerTime = a.TriggerTime.ToString("HH:mm;ss")
+                }).ToList();
+
+
+
+            dgvAlarms.DataSource = null;
+            dgvAlarms.DataSource = rows;
         }
 
         private void UpdateStatus()
@@ -177,6 +194,30 @@ namespace FactorySupervisor
                 _rows.Add(row);
                 _rowMap[tag.Id] = row;
             }
+        }
+
+        private Task RunBackgroundAsync(Func<CancellationToken, Task> action)
+        {
+            return Task.Run(async () =>
+            {
+                try
+                {
+                    if (_cts is null) return;
+                    await action(_cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Normal stop.
+                }
+                catch (Exception ex)
+                {
+                    BeginInvoke(() =>
+                    {
+                        _isRunning = false;
+                        lblStatus.Text = $"Error: {ex.Message}";
+                    });
+                }
+            });
         }
     }
 }
