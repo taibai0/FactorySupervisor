@@ -102,6 +102,10 @@ namespace FactorySupervisor.src.Infrastructure.Protocol
                     var value = await ReadOneAsync(_master, _device.UnitId, addr, tag.DataType, ct);
                     results.Add(TagValue.Good(tag.Id, tag.DeviceId, value, DateTimeOffset.Now));
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     results.Add(TagValue.Bad(tag.Id, tag.DeviceId, $"读取失败: {ex.Message}", now));

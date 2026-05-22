@@ -1,6 +1,7 @@
 ﻿using FactorySupervisor.src.Application.Services;
 using FactorySupervisor.src.Contracts.Abstractions;
 using FactorySupervisor.src.Infrastructure.Caching;
+using FactorySupervisor.src.Infrastructure.Data;
 using FactorySupervisor.src.Infrastructure.Protocol;
 using FactorySupervisor.src.Infrastructure.Repositories;
 using FactorySupervisor.src.UI.WinForms;
@@ -14,6 +15,8 @@ namespace FactorySupervisor
         private readonly IAlarmRuleRepository _alarmRuleRepository=new InMemoryAlarmRuleRepository();
         private readonly IAlarmStateStore _alarmStateStore=new InMemoryAlarmStateStore();
         private AlarmEvaluationService? _alarmEvaluationService;
+        private IAlarmHistoryRepository _alarmHistoryRepository = new SqlAlarmHistoryRepository();
+        //接收方法返回的数据
         private Task? _acquisitionTask;
         private Task? _alarmTask;
 
@@ -29,6 +32,7 @@ namespace FactorySupervisor
         private readonly IDeviceRepository _deviceRepo = new InMemoryDeviceRepository();
         private readonly ITagRepository _tagRepo = new InMemoryTagRepository();
         private readonly IProtocolClientFactory _factory = new ProtocolClientFactory();
+        private readonly ITagHistoryRepository _tagHistoryRepository = new SqlTagHistoryRepository();
 
         private CancellationTokenSource? _cts;
         private AcquisitionService? _acquisitionService;
@@ -38,8 +42,9 @@ namespace FactorySupervisor
             InitializeComponent();
         }
 
-        private void Form1_Load(object sender, EventArgs e)
+        private async void Form1_Load(object sender, EventArgs e)
         {
+            await SqlDatabaseInitializer.InitializeAsync();
             dgvTags.AutoGenerateColumns = true;
             dgvTags.DataSource = _rows;
 
@@ -57,11 +62,12 @@ namespace FactorySupervisor
 
             _cts = new CancellationTokenSource();
           
-            _acquisitionService = new AcquisitionService(_deviceRepo, _tagRepo, _factory, _cache);
+            _acquisitionService = new AcquisitionService(_deviceRepo, _tagRepo, _factory, _cache,_tagHistoryRepository);
             _alarmEvaluationService = new AlarmEvaluationService(
                         _alarmRuleRepository,
                         _cache,
-                        _alarmStateStore);
+                        _alarmStateStore,
+                        _alarmHistoryRepository);
             _isRunning = true;
             UpdateStatus();
 

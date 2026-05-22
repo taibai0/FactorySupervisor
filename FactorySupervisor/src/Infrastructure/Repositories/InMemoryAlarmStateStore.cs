@@ -29,12 +29,15 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
             {
                 return;
             }
-
-            //先标记恢复；后面接历史报警时，这里会同时写入历史库
+            
             alarm.Recover(revocerTime);
             _activeAlarms.TryRemove(ruleId, out _);
         }
-       
+
+        public bool TryGetActive(Guid ruleId, out AlarmRecord? alarm)
+        {
+            return _activeAlarms.TryGetValue(ruleId, out alarm);
+        }
 
         public void UpsertActive(AlarmRecord alarm)
         {
