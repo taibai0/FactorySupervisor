@@ -14,5 +14,7 @@ namespace FactorySupervisor.src.Contracts.Abstractions
         void UpsertActive(AlarmRecord alarm);
         void Recover(Guid ruleId, DateTimeOffset revocerTime);
         bool HasActive(Guid ruleId);
+
+        bool TryGetActive(Guid ruleId, out AlarmRecord? alarm);
     }
 }

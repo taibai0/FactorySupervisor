@@ -14,15 +14,18 @@ namespace FactorySupervisor.src.Application.Services
         private readonly IAlarmRuleRepository _ruleRepository;
         private readonly ITagValueCache _tagValueCache;
         private readonly IAlarmStateStore _alarmStateStore;
+        private readonly IAlarmHistoryRepository _alarmHistoryRepository;
 
         public AlarmEvaluationService(
             IAlarmRuleRepository ruleRepository,
             ITagValueCache tagValueCache,
-            IAlarmStateStore alarmStateStore)
+            IAlarmStateStore alarmStateStore,
+            IAlarmHistoryRepository alarmHistoryRepository)
         {
             _ruleRepository = ruleRepository;
             _tagValueCache = tagValueCache;
             _alarmStateStore = alarmStateStore;
+            _alarmHistoryRepository = alarmHistoryRepository;
         }
         
         public async Task RunAsync(CancellationToken ct)
@@ -76,13 +79,20 @@ namespace FactorySupervisor.src.Application.Services
                       
 
                         _alarmStateStore.UpsertActive(alarm);
+
+                        //报警首次触发写入历史库
+                        await _alarmHistoryRepository.InsertAsync(alarm,ct);
                     }
                 }
                 else
                 {
-                    if (_alarmStateStore.HasActive(rule.Id))
+                    if (_alarmStateStore.TryGetActive(rule.Id,out var alarm)&&alarm is not null)
                     {
-                        _alarmStateStore.Recover(rule.Id, DateTimeOffset.Now);
+                        var recoverTime=DateTimeOffset.Now;
+
+                        _alarmStateStore.Recover(rule.Id, recoverTime);
+                        await _alarmHistoryRepository.UpdateRecoveredAsync(alarm.Id, recoverTime,ct);
+
                     }
                 }
 
