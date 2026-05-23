@@ -1,5 +1,8 @@
 ﻿using FactorySupervisor.src.Application.Services;
 using FactorySupervisor.src.Contracts.Abstractions;
+using FactorySupervisor.src.Domain.Entities;
+using FactorySupervisor.src.Domain.Enums;
+using FactorySupervisor.src.Infrastructure.Auth;
 using FactorySupervisor.src.Infrastructure.Caching;
 using FactorySupervisor.src.Infrastructure.Data;
 using FactorySupervisor.src.Infrastructure.Protocol;
@@ -34,6 +37,10 @@ namespace FactorySupervisor
         private readonly IProtocolClientFactory _factory = new ProtocolClientFactory();
         private readonly ITagHistoryRepository _tagHistoryRepository = new SqlTagHistoryRepository();
 
+        //操作日志记录
+        private readonly IAuditLogRepository _auditLogRepository = new SqlAuditLogRepository();
+        private readonly IAuthService _authService = new InMemoryAuthService();
+
         private CancellationTokenSource? _cts;
         private AcquisitionService? _acquisitionService;
 
@@ -45,16 +52,31 @@ namespace FactorySupervisor
         private async void Form1_Load(object sender, EventArgs e)
         {
             await SqlDatabaseInitializer.InitializeAsync();
+
+            using var loginFrom = new LoginForm(_authService);
+            if (loginFrom.ShowDialog(this) != DialogResult.OK)
+            {
+                Close();
+                return;
+            }
+            ApplyPermissions();
+
             dgvTags.AutoGenerateColumns = true;
             dgvTags.DataSource = _rows;
 
             timerRefresh.Interval = 1000;
             timerRefresh.Start();
             UpdateStatus();
-        }
+        }  
 
         private async void start_button_Click(object sender, EventArgs e)
         {
+            if (!_authService.HasRole(UserRole.Admin, UserRole.Engineer))
+            {
+                MessageBox.Show("当前用户没有启动采集的权限");
+                return;
+            }
+
             if (_isRunning) return;
 
             await InitTagRowsAsync();
@@ -73,15 +95,25 @@ namespace FactorySupervisor
 
             _acquisitionTask = RunBackgroundAsync(_acquisitionService.RunAsync);
             _alarmTask=RunBackgroundAsync(_alarmEvaluationService.RunAsync);
+
+            await WriteAuditAsync("StartAcquisition", "启动采集服务");
         }
 
-        private void stop_button_Click(object sender, EventArgs e)
+        private async void stop_button_Click(object sender, EventArgs e)
         {
+            if (!_authService.HasRole(UserRole.Admin, UserRole.Engineer))
+            {
+                MessageBox.Show("当前用户没有停止采集的权限");
+                return;
+            }
+
             if (!_isRunning) return;
 
             _cts?.Cancel();
             _isRunning = false;
             UpdateStatus();
+
+            await WriteAuditAsync("StopAcquisition", "停止采集服务");
         }
 
         private void timerRefresh_Tick(object sender, EventArgs e)
@@ -178,6 +210,7 @@ namespace FactorySupervisor
             }
         }
 
+        //初始化点位显示元素
         private async Task InitTagRowsAsync()
         {
             var devices = await _deviceRepo.GetEnableDevicesAsync();
@@ -213,7 +246,7 @@ namespace FactorySupervisor
                 }
                 catch (OperationCanceledException)
                 {
-                    // Normal stop.
+                    // 正常停止
                 }
                 catch (Exception ex)
                 {
@@ -224,6 +257,40 @@ namespace FactorySupervisor
                     });
                 }
             });
+        }
+
+        //审计辅助方法
+        private async Task WriteAuditAsync(string action,string detail)
+        {
+            var user = _authService.CurrentUser;
+
+            if(user==null) return;
+
+            var log = new AuditLog
+            {
+                UserId = user.Id,
+                Username = user.Username,
+                Action = action,
+                Detail = detail,
+                CreatedAt = DateTimeOffset.Now
+            };
+
+            await _auditLogRepository.InsertAsync(log);
+        }
+
+        //权限验证
+        private void ApplyPermissions()
+        {
+            //只有admin和engineer可以控制采集服务
+            var canControlAcquisition = _authService.HasRole(UserRole.Admin, UserRole.Engineer);
+
+            start_button.Enabled = canControlAcquisition;
+            stop_button.Enabled = canControlAcquisition;
+
+            var user=_authService.CurrentUser;
+            Text=user is null
+                ? "FactorySupervisor"
+        :       $"FactorySupervisor - {user.DisplayName} ({user.Role})";
         }
     }
 }

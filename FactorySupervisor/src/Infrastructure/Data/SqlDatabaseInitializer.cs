@@ -38,6 +38,7 @@ namespace FactorySupervisor.src.Infrastructure.Data
                     ON dbo.TagHistory(TagId,Timestamp DESC);
                 END;
 
+                
                 IF OBJECT_ID(N'dbo.AlarmHistory', N'U') IS NULL
                 BEGIN
                     CREATE TABLE dbo.AlarmHistory
@@ -60,6 +61,21 @@ namespace FactorySupervisor.src.Infrastructure.Data
                     CREATE INDEX IX_AlarmHistory_TriggerTime
                     ON dbo.AlarmHistory(TriggerTime DESC);
                 END;
+
+                IF OBJECT_ID(N'dbo.AuditLog',N'U') IS NULL
+                BEGIN
+                    CREATE TABLE dbo.AuditLog
+                    (
+                        Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                        UserId UNIQUEIDENTIFIER NOT NULL,
+                        Username NVARCHAR(100) NOT NULL,
+                        Action NVARCHAR(100) NOT NULL,
+                        Detail NVARCHAR(500) NULL,
+                        CreatedAt DATETIMEOFFSET NOT NULL
+                    )
+                    CREATE INDEX IX_AuditLog_CreatedAt
+                    ON dbo.AuditLog(CreatedAt DESC);
+                END
                 """;
 
             await using var cmd = new SqlCommand(sql, conn);
