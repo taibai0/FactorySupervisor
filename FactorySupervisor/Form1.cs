@@ -15,8 +15,8 @@ namespace FactorySupervisor
     public partial class Form1 : Form
     {
         //报警服务
-        private readonly IAlarmRuleRepository _alarmRuleRepository=new InMemoryAlarmRuleRepository();
-        private readonly IAlarmStateStore _alarmStateStore=new InMemoryAlarmStateStore();
+        private readonly IAlarmRuleRepository _alarmRuleRepository = new InMemoryAlarmRuleRepository();
+        private readonly IAlarmStateStore _alarmStateStore = new InMemoryAlarmStateStore();
         private AlarmEvaluationService? _alarmEvaluationService;
         private IAlarmHistoryRepository _alarmHistoryRepository = new SqlAlarmHistoryRepository();
         //接收方法返回的数据
@@ -67,7 +67,7 @@ namespace FactorySupervisor
             timerRefresh.Interval = 1000;
             timerRefresh.Start();
             UpdateStatus();
-        }  
+        }
 
         private async void start_button_Click(object sender, EventArgs e)
         {
@@ -80,11 +80,11 @@ namespace FactorySupervisor
             if (_isRunning) return;
 
             await InitTagRowsAsync();
-            
+
 
             _cts = new CancellationTokenSource();
-          
-            _acquisitionService = new AcquisitionService(_deviceRepo, _tagRepo, _factory, _cache,_tagHistoryRepository);
+
+            _acquisitionService = new AcquisitionService(_deviceRepo, _tagRepo, _factory, _cache, _tagHistoryRepository);
             _alarmEvaluationService = new AlarmEvaluationService(
                         _alarmRuleRepository,
                         _cache,
@@ -94,7 +94,7 @@ namespace FactorySupervisor
             UpdateStatus();
 
             _acquisitionTask = RunBackgroundAsync(_acquisitionService.RunAsync);
-            _alarmTask=RunBackgroundAsync(_alarmEvaluationService.RunAsync);
+            _alarmTask = RunBackgroundAsync(_alarmEvaluationService.RunAsync);
 
             await WriteAuditAsync("StartAcquisition", "启动采集服务");
         }
@@ -260,11 +260,11 @@ namespace FactorySupervisor
         }
 
         //审计辅助方法
-        private async Task WriteAuditAsync(string action,string detail)
+        private async Task WriteAuditAsync(string action, string detail)
         {
             var user = _authService.CurrentUser;
 
-            if(user==null) return;
+            if (user == null) return;
 
             var log = new AuditLog
             {
@@ -287,10 +287,18 @@ namespace FactorySupervisor
             start_button.Enabled = canControlAcquisition;
             stop_button.Enabled = canControlAcquisition;
 
-            var user=_authService.CurrentUser;
-            Text=user is null
+            var user = _authService.CurrentUser;
+            Text = user is null
                 ? "FactorySupervisor"
-        :       $"FactorySupervisor - {user.DisplayName} ({user.Role})";
+        : $"FactorySupervisor - {user.DisplayName} ({user.Role})";
+        }
+
+
+        //查询历史数据
+        private void btnOpenHIstory_Click(object sender, EventArgs e)
+        {
+            using var form = new HistoryForm();
+            form.ShowDialog(this);
         }
     }
 }
