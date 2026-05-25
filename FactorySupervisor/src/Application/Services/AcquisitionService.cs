@@ -103,7 +103,7 @@ namespace FactorySupervisor.src.Application.Services
                     MarkDeviceBad(tags, conn.Error ?? "连接失败");
                     return;
                 }
-
+                
                 ct.ThrowIfCancellationRequested();
 
                 var read = await client.ReadAsync(tags, ct);

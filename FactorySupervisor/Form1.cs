@@ -27,8 +27,10 @@ namespace FactorySupervisor
         private DateTimeOffset? _lastUpdateTime;
 
         //datagridview显示元素
-        private readonly BindingList<TagGridRow> _rows = new();
-        private readonly Dictionary<Guid, TagGridRow> _rowMap = new();
+        private readonly BindingList<TagGridRow> _tagRows = new();
+        private readonly Dictionary<Guid, TagGridRow> _tagRowMap = new();
+        private readonly BindingList<AlarmGridRow> _alarmRows= new();
+        private readonly Dictionary<Guid, AlarmGridRow> _alarmRowMap = new();
 
         //状态读取服务
         private readonly ITagValueCache _cache = new InMemoryTagValueCache();
@@ -60,9 +62,13 @@ namespace FactorySupervisor
                 return;
             }
             ApplyPermissions();
+            await LoadDeviceInfoAsync();
 
             dgvTags.AutoGenerateColumns = true;
-            dgvTags.DataSource = _rows;
+            dgvTags.DataSource = _tagRows;
+
+            dgvAlarms.AutoGenerateColumns = true;
+            dgvAlarms.DataSource = _alarmRows;
 
             timerRefresh.Interval = 1000;
             timerRefresh.Start();
@@ -92,6 +98,7 @@ namespace FactorySupervisor
                         _alarmHistoryRepository);
             _isRunning = true;
             UpdateStatus();
+            await LoadDeviceInfoAsync();
 
             _acquisitionTask = RunBackgroundAsync(_acquisitionService.RunAsync);
             _alarmTask = RunBackgroundAsync(_alarmEvaluationService.RunAsync);
@@ -112,6 +119,7 @@ namespace FactorySupervisor
             _cts?.Cancel();
             _isRunning = false;
             UpdateStatus();
+            await LoadDeviceInfoAsync();
 
             await WriteAuditAsync("StopAcquisition", "停止采集服务");
         }
@@ -120,7 +128,7 @@ namespace FactorySupervisor
         {
             var hasAnyValue = false;
 
-            foreach (var pair in _rowMap)
+            foreach (var pair in _tagRowMap)
             {
                 var tagId = pair.Key;
                 var row = pair.Value;
@@ -156,31 +164,81 @@ namespace FactorySupervisor
         //刷新报警表
         private void RefreshAlarmGrid()
         {
-            var rows = _alarmStateStore.GetCurrentAlarms()
-                .Select(a => new
+            var alarms = _alarmStateStore.GetCurrentAlarms();
+
+            var activeRuleIds = alarms.Select(a => a.RuleId).ToHashSet();
+
+            // 删除已经恢复、不再当前报警列表里的行
+            foreach (var ruleId in _alarmRowMap.Keys.ToList())
+            {
+                if (activeRuleIds.Contains(ruleId)) continue;
+
+                var row = _alarmRowMap[ruleId];
+                _alarmRows.Remove(row);
+                _alarmRowMap.Remove(ruleId);
+            }
+
+            //新增或更新当前报警
+            foreach(var alarm in alarms)
+            {
+                if(!_alarmRowMap.TryGetValue(alarm.RuleId, out var row))
                 {
-                    a.RuleName,
-                    Leave = a.Level.ToString(),
-                    State = a.State.ToString(),
-                    a.TriggerValue,
-                    TriggerTime = a.TriggerTime.ToString("HH:mm;ss")
-                }).ToList();
+                    row = new AlarmGridRow
+                    {
+                        RuleId = alarm.RuleId
+                    };
+                    _alarmRows.Add(row);
+                    _alarmRowMap[alarm.RuleId] = row;
+                }
 
-
-
-            dgvAlarms.DataSource = null;
-            dgvAlarms.DataSource = rows;
+                row.RuleName = alarm.RuleName;
+                row.Level = alarm.Level.ToString();
+                row.State = alarm.State.ToString();
+                row.TriggerValue = alarm.TriggerValue?.ToString() ?? "";
+                row.TriggerTime = alarm.TriggerTime.ToString("HH:mm:ss");
+            }
+            dgvAlarms.Refresh();
+            ApplyAlarmRowStyle();
         }
 
+        //更新点位采集状态
         private void UpdateStatus()
         {
-            var badCount = _rows.Count(r => r.Quality == "Bad");
+            var badCount = _tagRows.Count(r => r.Quality == "Bad");
             var lastUpdate = _lastUpdateTime?.ToString("HH:mm:ss") ?? "--";
 
-            lblStatus.Text = _isRunning
-                ? $"Running | Last Update: {lastUpdate} | Bad Count: {badCount}"
-                : $"Stopped | Last Update: {lastUpdate} | Bad Count: {badCount}";
+            toolStripStatusLabelRunState.Text = _isRunning ? "运行中" : "已停止";
+            toolStripStatusLabelBadCount.Text = $"Bad：{badCount}";
+            toolStripStatusLabelLastUpdate.Text = $"最后刷新时间：{lastUpdate}";
+
+            var alarmCount = _alarmStateStore.GetCurrentAlarms().Count();
+
+            lblCardRunStateValue.Text = _isRunning ? "运行中" : "已停止";
+            lblCardAlarmCountValue.Text = $"{alarmCount}条";
+
+            lblCardRunStateValue.ForeColor = _isRunning
+                ? Color.ForestGreen
+                : Color.DimGray;
+
+            lblCardAlarmCountValue.ForeColor = alarmCount > 0
+                ? Color.Firebrick
+                : Color.ForestGreen;
+
+            lblCardCommQualityValue.Text = !_isRunning
+                ? "未启动"
+               : badCount > 0 ? "异常" : "正常";
+
+
+            lblCardCommQualityValue.ForeColor = lblCardCommQualityValue.Text == "异常"
+                ? Color.Firebrick
+                : Color.ForestGreen;
+
+            //TODO 后续修改
+            lblCardDbStateValue.Text = "已连接";
+            lblCardDbStateValue.ForeColor = Color.ForestGreen;
         }
+
+
 
         private void ApplyRowStyle()
         {
@@ -218,8 +276,8 @@ namespace FactorySupervisor
 
             var tags = await _tagRepo.GetByDeviceAsync(devices[0].Id);
 
-            _rows.Clear();
-            _rowMap.Clear();
+            _tagRows.Clear();
+            _tagRowMap.Clear();
 
             foreach (var tag in tags)
             {
@@ -230,8 +288,8 @@ namespace FactorySupervisor
                     Address = tag.Address
                 };
 
-                _rows.Add(row);
-                _rowMap[tag.Id] = row;
+                _tagRows.Add(row);
+                _tagRowMap[tag.Id] = row;
             }
         }
 
@@ -253,7 +311,7 @@ namespace FactorySupervisor
                     BeginInvoke(() =>
                     {
                         _isRunning = false;
-                        lblStatus.Text = $"Error: {ex.Message}";
+                        toolStripStatusLabelRunState.Text = $"错误：{ex.Message}";
                     });
                 }
             });
@@ -288,17 +346,65 @@ namespace FactorySupervisor
             stop_button.Enabled = canControlAcquisition;
 
             var user = _authService.CurrentUser;
-            Text = user is null
-                ? "FactorySupervisor"
-        : $"FactorySupervisor - {user.DisplayName} ({user.Role})";
+            toolStripStatusLabelUser.Text = user is null
+                ? "未登录"
+        : $"{user.DisplayName} ({user.Role})";
         }
 
 
         //查询历史数据
-        private void btnOpenHIstory_Click(object sender, EventArgs e)
+        private void btnOpenHistory_Click(object sender, EventArgs e)
         {
             using var form = new HistoryForm();
             form.ShowDialog(this);
         }
+
+
+        //获取当前设备信息
+        private async Task LoadDeviceInfoAsync()
+        {
+            var devices = await _deviceRepo.GetEnableDevicesAsync();
+
+            if (devices.Count == 0)
+            {
+                lblDeviceName.Text = "设备名称： --";
+                lblProtocol.Text = "协议：--";
+                lblComPort.Text = "串口：--";
+                
+            }
+            var device = devices[0];
+
+            lblDeviceName.Text = $"设备名称：{device.Name}";
+            lblProtocol.Text = $"协议：{device.ProtocolType}";
+           
+            lblComPort.Text = $"串口：{device.ComPort ?? "--"}";
+        }
+
+        //给报警表加颜色
+        private void ApplyAlarmRowStyle()
+        {
+            foreach (DataGridViewRow gridRow in dgvAlarms.Rows)
+            {
+                var level = gridRow.Cells["Level"]?.Value?.ToString();
+
+                if (level == "Critical")
+                {
+                    gridRow.DefaultCellStyle.BackColor = Color.MistyRose;
+                    gridRow.DefaultCellStyle.ForeColor = Color.DarkRed;
+                }
+                else if (level == "High")
+                {
+                    gridRow.DefaultCellStyle.BackColor = Color.LemonChiffon;
+                    gridRow.DefaultCellStyle.ForeColor = Color.DarkOrange;
+                }
+                else
+                {
+                    gridRow.DefaultCellStyle.BackColor = Color.White;
+                    gridRow.DefaultCellStyle.ForeColor = Color.Black;
+                }
+            }
+        }
+
+       
     }
 }
