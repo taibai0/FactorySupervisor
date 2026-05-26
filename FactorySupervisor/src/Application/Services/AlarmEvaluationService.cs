@@ -42,6 +42,10 @@ namespace FactorySupervisor.src.Application.Services
             {
                 // 正常停止
             }
+            catch(Exception ex)
+            {
+                MessageBox.Show(ex.ToString());
+            }
         }
 
         private async Task EvaluateOnceAsync(CancellationToken ct)

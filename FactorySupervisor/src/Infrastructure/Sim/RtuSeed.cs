@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+//TODO 已由sql配置表替代，后续确认无依赖后删除
 namespace FactorySupervisor.src.Infrastructure.Sim
 {
     public static class RtuSeed

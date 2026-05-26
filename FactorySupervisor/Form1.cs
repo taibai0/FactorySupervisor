@@ -15,7 +15,7 @@ namespace FactorySupervisor
     public partial class Form1 : Form
     {
         //报警服务
-        private readonly IAlarmRuleRepository _alarmRuleRepository = new InMemoryAlarmRuleRepository();
+        private readonly IAlarmRuleRepository _alarmRuleRepository = new SqlAlarmRuleRepository();
         private readonly IAlarmStateStore _alarmStateStore = new InMemoryAlarmStateStore();
         private AlarmEvaluationService? _alarmEvaluationService;
         private IAlarmHistoryRepository _alarmHistoryRepository = new SqlAlarmHistoryRepository();
@@ -34,8 +34,8 @@ namespace FactorySupervisor
 
         //状态读取服务
         private readonly ITagValueCache _cache = new InMemoryTagValueCache();
-        private readonly IDeviceRepository _deviceRepo = new InMemoryDeviceRepository();
-        private readonly ITagRepository _tagRepo = new InMemoryTagRepository();
+        private readonly IDeviceRepository _deviceRepo = new SqlDeviceRepository();
+        private readonly ITagRepository _tagRepo = new SqlTagRepository();
         private readonly IProtocolClientFactory _factory = new ProtocolClientFactory();
         private readonly ITagHistoryRepository _tagHistoryRepository = new SqlTagHistoryRepository();
 
@@ -62,7 +62,7 @@ namespace FactorySupervisor
                 return;
             }
             ApplyPermissions();
-            await LoadDeviceInfoAsync();
+            //await LoadDeviceInfoAsync();
 
             dgvTags.AutoGenerateColumns = true;
             dgvTags.DataSource = _tagRows;
@@ -311,6 +311,7 @@ namespace FactorySupervisor
                     BeginInvoke(() =>
                     {
                         _isRunning = false;
+                        _cts?.Cancel();
                         toolStripStatusLabelRunState.Text = $"错误：{ex.Message}";
                     });
                 }
