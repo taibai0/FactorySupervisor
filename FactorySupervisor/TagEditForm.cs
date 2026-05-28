@@ -1,0 +1,178 @@
+using FactorySupervisor.src.Contracts.Models;
+
+namespace FactorySupervisor
+{
+    public sealed class TagEditForm : Form
+    {
+        private readonly ComboBox cboDevice = new();
+        private readonly TextBox txtName = new();
+        private readonly TextBox txtAddress = new();
+        private readonly ComboBox cboDataType = new();
+        private readonly NumericUpDown numScanMs = new();
+        private readonly CheckBox chkArchiveEnabled = new();
+        private readonly CheckBox chkEnabled = new();
+        private readonly Button btnOk = new();
+        private readonly Button btnCancel = new();
+
+        public TagConfigRow? CreatedTag { get; private set; }
+
+        public TagEditForm(IReadOnlyList<DeviceConfigRow> devices)
+        {
+            InitializeUi();
+            InitializeDefaults(devices);
+        }
+
+        private void InitializeUi()
+        {
+            Text = "新增点位";
+            StartPosition = FormStartPosition.CenterParent;
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = false;
+            MinimizeBox = false;
+            ClientSize = new Size(520, 360);
+
+            var table = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(18),
+                ColumnCount = 2,
+                RowCount = 9
+            };
+
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
+            AddRow(table, 0, "所属设备", cboDevice);
+            AddRow(table, 1, "点位名称", txtName);
+            AddRow(table, 2, "地址", txtAddress);
+            AddRow(table, 3, "数据类型", cboDataType);
+            AddRow(table, 4, "采集周期(ms)", numScanMs);
+            AddRow(table, 5, "历史归档", chkArchiveEnabled);
+            AddRow(table, 6, "启用", chkEnabled);
+
+            var buttonPanel = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.RightToLeft
+            };
+
+            btnOk.Text = "确定";
+            btnOk.Width = 90;
+            btnOk.Click += btnOk_Click;
+
+            btnCancel.Text = "取消";
+            btnCancel.Width = 90;
+            btnCancel.DialogResult = DialogResult.Cancel;
+
+            buttonPanel.Controls.Add(btnOk);
+            buttonPanel.Controls.Add(btnCancel);
+
+            table.Controls.Add(buttonPanel, 1, 8);
+            Controls.Add(table);
+
+            AcceptButton = btnOk;
+            CancelButton = btnCancel;
+        }
+
+        private static void AddRow(TableLayoutPanel table, int rowIndex, string labelText, Control editor)
+        {
+            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+
+            var label = new Label
+            {
+                Text = labelText,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            editor.Dock = DockStyle.Fill;
+
+            table.Controls.Add(label, 0, rowIndex);
+            table.Controls.Add(editor, 1, rowIndex);
+        }
+
+        private void InitializeDefaults(IReadOnlyList<DeviceConfigRow> devices)
+        {
+            cboDevice.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboDevice.DataSource = devices.ToList();
+            cboDevice.DisplayMember = nameof(DeviceConfigRow.Name);
+            cboDevice.ValueMember = nameof(DeviceConfigRow.Id);
+
+            cboDataType.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboDataType.Items.AddRange(new object[]
+            {
+                "Bool",
+                "Int16",
+                "UInt16",
+                "Int32",
+                "UInt32",
+                "Float",
+                "Double",
+                "String"
+            });
+            cboDataType.SelectedItem = "UInt16";
+
+            txtName.Text = $"Tag-{DateTime.Now:HHmmss}";
+            txtAddress.Text = "40001";
+
+            numScanMs.Minimum = 100;
+            numScanMs.Maximum = 600000;
+            numScanMs.Increment = 100;
+            numScanMs.Value = 1000;
+
+            chkArchiveEnabled.Checked = true;
+            chkEnabled.Checked = true;
+        }
+
+        private void btnOk_Click(object? sender, EventArgs e)
+        {
+            if (!ValidateInput())
+            {
+                return;
+            }
+
+            var device = (DeviceConfigRow)cboDevice.SelectedItem!;
+
+            CreatedTag = new TagConfigRow
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = device.Id,
+                Name = txtName.Text.Trim(),
+                Address = txtAddress.Text.Trim(),
+                DataType = cboDataType.Text,
+                ScanMs = ((int)numScanMs.Value).ToString(),
+                ArchiveEnabled = chkArchiveEnabled.Checked,
+                Enabled = chkEnabled.Checked
+            };
+
+            DialogResult = DialogResult.OK;
+            Close();
+        }
+
+        private bool ValidateInput()
+        {
+            if (cboDevice.SelectedItem is not DeviceConfigRow)
+            {
+                MessageBox.Show("请选择所属设备");
+                cboDevice.Focus();
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(txtName.Text))
+            {
+                MessageBox.Show("点位名称不能为空");
+                txtName.Focus();
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(txtAddress.Text))
+            {
+                MessageBox.Show("地址不能为空");
+                txtAddress.Focus();
+                return false;
+            }
+
+            return true;
+        }
+    }
+}

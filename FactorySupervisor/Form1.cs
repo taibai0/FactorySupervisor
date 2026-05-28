@@ -29,6 +29,7 @@ namespace FactorySupervisor
         //datagridview显示元素
         private readonly BindingList<TagGridRow> _tagRows = new();
         private readonly Dictionary<Guid, TagGridRow> _tagRowMap = new();
+        private readonly List<TagGridRow> _allTagRows = new();
         private readonly BindingList<AlarmGridRow> _alarmRows = new();
         private readonly Dictionary<Guid, AlarmGridRow> _alarmRowMap = new();
 
@@ -46,6 +47,9 @@ namespace FactorySupervisor
         private CancellationTokenSource? _cts;
         private AcquisitionService? _acquisitionService;
 
+        private ConfigForm? _configForm;
+
+        private Guid? _selectedDeviceId;
         public Form1()
         {
             InitializeComponent();
@@ -62,6 +66,7 @@ namespace FactorySupervisor
                 return;
             }
             ApplyPermissions();
+            await LoadDeviceFilterAsync();
             //await LoadDeviceInfoAsync();
 
             dgvTags.AutoGenerateColumns = true;
@@ -86,8 +91,6 @@ namespace FactorySupervisor
             if (_isRunning) return;
 
             await InitTagRowsAsync();
-
-
             _cts = new CancellationTokenSource();
 
             _acquisitionService = new AcquisitionService(_deviceRepo, _tagRepo, _factory, _cache, _tagHistoryRepository);
@@ -272,25 +275,32 @@ namespace FactorySupervisor
         private async Task InitTagRowsAsync()
         {
             var devices = await _deviceRepo.GetEnableDevicesAsync();
-            if (devices.Count == 0) return;
 
-            var tags = await _tagRepo.GetByDeviceAsync(devices[0].Id);
+            _allTagRows.Clear();
 
-            _tagRows.Clear();
-            _tagRowMap.Clear();
-
-            foreach (var tag in tags)
+            foreach (var device in devices)
             {
-                var row = new TagGridRow
-                {
-                    TagId = tag.Id,
-                    Name = tag.Name,
-                    Address = tag.Address
-                };
+                var tags = await _tagRepo.GetByDeviceAsync(device.Id);
 
-                _tagRows.Add(row);
-                _tagRowMap[tag.Id] = row;
+                foreach (var tag in tags)
+                {
+                    var row = new TagGridRow
+                    {
+                        TagId = tag.Id,
+                        DeviceId = device.Id,
+                        DeviceName = device.Name,
+                        Name = tag.Name,
+                        Address = tag.Address,
+                        Value = "--",
+                        Quality = "None",
+                        Time = "",
+                        Error = ""
+                    };
+                    _allTagRows.Add(row);
+                }
             }
+            ApplyTagFilter();
+            ConfigureTagGrid();
         }
 
         private Task RunBackgroundAsync(Func<CancellationToken, Task> action)
@@ -406,10 +416,198 @@ namespace FactorySupervisor
             }
         }
 
+        //打开配置窗口
         private void 配置管理ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            using var form = new ConfigForm();
-            form.ShowDialog(this);
+            if (_configForm is not null && !_configForm.IsDisposed)
+            {
+                _configForm.Activate();
+                return;
+            }
+
+            _configForm = new ConfigForm(_authService, _auditLogRepository);
+
+            _configForm.ConfigSaved += ConfigForm_ConfigSaved;
+
+            //窗口关闭后，把引用清空，方便下次重新打开
+            _configForm.FormClosed += (_, _) =>
+            {
+                _configForm = null;
+            };
+
+            //不阻塞主窗口
+            _configForm.Show();
+        }
+
+        /// <summary>
+        /// 配置更新后点位表跟着更新
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private async void ConfigForm_ConfigSaved(object? sender, EventArgs e)
+        {
+            var oldSelectedDevicedId = _selectedDeviceId;
+
+            await LoadDeviceFilterAsync();
+
+            if(oldSelectedDevicedId is not null)
+            {
+                for(var i=0;i<toolStripCboDeviceFilter.ComboBox.Items.Count;i++)
+                {
+                    if (toolStripCboDeviceFilter.ComboBox.Items[i] is DeviceFilterItem item &&
+                        item.DeviceId== oldSelectedDevicedId)
+                    {
+                        toolStripCboDeviceFilter.ComboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            await InitTagRowsAsync();
+
+            dgvTags.Refresh();
+
+            if (_isRunning)
+            {
+                MessageBox.Show("点位配置已刷新，采集服务将在下一轮循环使用最新配置。");
+            }
+        }
+
+        //关闭主窗口的同时关闭其他窗口
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (_configForm is not null && !_configForm.IsDisposed)
+            {
+                _configForm.Close();
+            }
+        }
+
+        private void ConfigureTagGrid()
+        {
+            if (dgvTags.Columns.Contains("DeviceId"))
+            {
+                dgvTags.Columns["DeviceId"].Visible = false;
+            }
+
+            if (dgvTags.Columns.Contains("DeviceName"))
+            {
+                dgvTags.Columns["DeviceName"].HeaderText = "设备";
+            }
+
+            if (dgvTags.Columns.Contains("Name"))
+            {
+                dgvTags.Columns["Name"].HeaderText = "点位";
+            }
+
+            if (dgvTags.Columns.Contains("Address"))
+            {
+                dgvTags.Columns["Address"].HeaderText = "地址";
+            }
+
+            if (dgvTags.Columns.Contains("Value"))
+            {
+                dgvTags.Columns["Value"].HeaderText = "值";
+            }
+
+            if (dgvTags.Columns.Contains("Quality"))
+            {
+                dgvTags.Columns["Quality"].HeaderText = "质量";
+            }
+
+            if (dgvTags.Columns.Contains("Time"))
+            {
+                dgvTags.Columns["Time"].HeaderText = "时间";
+            }
+
+            if (dgvTags.Columns.Contains("Error"))
+            {
+                dgvTags.Columns["Error"].HeaderText = "错误";
+            }
+        }
+
+        private void toolStripCboDeviceFilter_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if(toolStripCboDeviceFilter.ComboBox.SelectedItem is not DeviceFilterItem item)
+            {
+                return;
+            }
+
+            _selectedDeviceId = item.DeviceId;
+            ApplyTagFilter();
+        }
+
+        /// <summary>
+        /// 用于决定显示哪些点位的信息
+        /// </summary>
+        /// <exception cref="NotImplementedException"></exception>
+        private void ApplyTagFilter()
+        {
+            _tagRows.Clear();
+            _tagRowMap.Clear();
+
+            var rows = _selectedDeviceId is null
+                ? _allTagRows
+                : _allTagRows.Where(r => r.DeviceId == _selectedDeviceId.Value).ToList();
+
+            foreach(var row in rows )
+            {
+                _tagRows.Add(row);
+                _tagRowMap[row.TagId] = row;
+            }
+
+            dgvTags.Refresh();
+        }
+
+        /// <summary>
+        /// 下拉选项模型
+        /// </summary>
+        private sealed class DeviceFilterItem
+        {
+            public Guid? DeviceId { get; init; }
+
+            public string Name { get; init; } = "";
+
+            public override string ToString()
+            {
+                return Name;
+            }
+        }
+
+        
+        /// <summary>
+        /// 加载当前可选的设备选项
+        /// </summary>
+        /// <returns></returns>
+        private async Task LoadDeviceFilterAsync()
+        {
+            var devices = await _deviceRepo.GetEnableDevicesAsync();
+
+            var items = new List<DeviceFilterItem>
+            {
+                new DeviceFilterItem
+                {
+                    DeviceId=null,
+                    Name="全部设备"
+                }
+            };
+
+            items.AddRange(devices.Select(d => new DeviceFilterItem
+            {
+                DeviceId = d.Id,
+                Name = d.Name
+            }));
+
+            toolStripCboDeviceFilter.SelectedIndexChanged -= toolStripCboDeviceFilter_SelectedIndexChanged;
+
+            toolStripCboDeviceFilter.ComboBox.DataSource = items;
+            toolStripCboDeviceFilter.ComboBox.DisplayMember = nameof(DeviceFilterItem.Name);
+
+            toolStripCboDeviceFilter.SelectedIndexChanged+= toolStripCboDeviceFilter_SelectedIndexChanged;
+
+            toolStripCboDeviceFilter.ComboBox.SelectedIndex = 0;
+            _selectedDeviceId = null;
         }
     }
+
+   
 }

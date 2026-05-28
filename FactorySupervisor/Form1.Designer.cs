@@ -41,6 +41,8 @@
             start_button = new ToolStripButton();
             stop_button = new ToolStripButton();
             btnOpenHistory = new ToolStripButton();
+            toolStripLabelDeviceFilter = new ToolStripLabel();
+            toolStripCboDeviceFilter = new ToolStripComboBox();
             statusStrip1 = new StatusStrip();
             toolStripStatusLabelRunState = new ToolStripStatusLabel();
             toolStripStatusLabelUser = new ToolStripStatusLabel();
@@ -96,7 +98,7 @@
             dgvTags.Name = "dgvTags";
             dgvTags.ReadOnly = true;
             dgvTags.RowHeadersWidth = 72;
-            dgvTags.Size = new Size(665, 733);
+            dgvTags.Size = new Size(870, 814);
             dgvTags.TabIndex = 2;
             // 
             // timerRefresh
@@ -112,7 +114,7 @@
             dgvAlarms.Name = "dgvAlarms";
             dgvAlarms.ReadOnly = true;
             dgvAlarms.RowHeadersWidth = 72;
-            dgvAlarms.Size = new Size(487, 733);
+            dgvAlarms.Size = new Size(639, 814);
             dgvAlarms.TabIndex = 5;
             // 
             // menuStrip1
@@ -121,7 +123,7 @@
             menuStrip1.Items.AddRange(new ToolStripItem[] { 系统ToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
-            menuStrip1.Size = new Size(1391, 37);
+            menuStrip1.Size = new Size(1814, 36);
             menuStrip1.TabIndex = 7;
             menuStrip1.Text = "menuStrip1";
             // 
@@ -129,29 +131,29 @@
             // 
             系统ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 退出ToolStripMenuItem, 配置管理ToolStripMenuItem });
             系统ToolStripMenuItem.Name = "系统ToolStripMenuItem";
-            系统ToolStripMenuItem.Size = new Size(72, 33);
+            系统ToolStripMenuItem.Size = new Size(72, 32);
             系统ToolStripMenuItem.Text = "系统";
             // 
             // 退出ToolStripMenuItem
             // 
             退出ToolStripMenuItem.Name = "退出ToolStripMenuItem";
-            退出ToolStripMenuItem.Size = new Size(315, 40);
+            退出ToolStripMenuItem.Size = new Size(213, 40);
             退出ToolStripMenuItem.Text = "退出";
             // 
             // 配置管理ToolStripMenuItem
             // 
             配置管理ToolStripMenuItem.Name = "配置管理ToolStripMenuItem";
-            配置管理ToolStripMenuItem.Size = new Size(315, 40);
+            配置管理ToolStripMenuItem.Size = new Size(213, 40);
             配置管理ToolStripMenuItem.Text = "配置管理";
             配置管理ToolStripMenuItem.Click += 配置管理ToolStripMenuItem_Click;
             // 
             // toolStrip1
             // 
             toolStrip1.ImageScalingSize = new Size(28, 28);
-            toolStrip1.Items.AddRange(new ToolStripItem[] { start_button, stop_button, btnOpenHistory });
-            toolStrip1.Location = new Point(0, 37);
+            toolStrip1.Items.AddRange(new ToolStripItem[] { start_button, stop_button, btnOpenHistory, toolStripLabelDeviceFilter, toolStripCboDeviceFilter });
+            toolStrip1.Location = new Point(0, 36);
             toolStrip1.Name = "toolStrip1";
-            toolStrip1.Size = new Size(1391, 38);
+            toolStrip1.Size = new Size(1814, 38);
             toolStrip1.TabIndex = 8;
             toolStrip1.Text = "toolStrip1";
             // 
@@ -179,13 +181,27 @@
             btnOpenHistory.Text = "历史查询";
             btnOpenHistory.Click += btnOpenHistory_Click;
             // 
+            // toolStripLabelDeviceFilter
+            // 
+            toolStripLabelDeviceFilter.Name = "toolStripLabelDeviceFilter";
+            toolStripLabelDeviceFilter.Size = new Size(75, 32);
+            toolStripLabelDeviceFilter.Text = "设备：";
+            // 
+            // toolStripCboDeviceFilter
+            // 
+            toolStripCboDeviceFilter.AutoSize = false;
+            toolStripCboDeviceFilter.DropDownStyle = ComboBoxStyle.DropDownList;
+            toolStripCboDeviceFilter.Name = "toolStripCboDeviceFilter";
+            toolStripCboDeviceFilter.Size = new Size(180, 36);
+            toolStripCboDeviceFilter.SelectedIndexChanged += toolStripCboDeviceFilter_SelectedIndexChanged;
+            // 
             // statusStrip1
             // 
             statusStrip1.ImageScalingSize = new Size(28, 28);
             statusStrip1.Items.AddRange(new ToolStripItem[] { toolStripStatusLabelRunState, toolStripStatusLabelUser, toolStripStatusLabelBadCount, toolStripStatusLabelLastUpdate });
-            statusStrip1.Location = new Point(0, 841);
+            statusStrip1.Location = new Point(0, 921);
             statusStrip1.Name = "statusStrip1";
-            statusStrip1.Size = new Size(1391, 37);
+            statusStrip1.Size = new Size(1814, 37);
             statusStrip1.TabIndex = 9;
             statusStrip1.Text = "statusStrip1";
             // 
@@ -216,7 +232,7 @@
             // splitMain
             // 
             splitMain.Dock = DockStyle.Fill;
-            splitMain.Location = new Point(0, 75);
+            splitMain.Location = new Point(0, 74);
             splitMain.Name = "splitMain";
             // 
             // splitMain.Panel1
@@ -226,8 +242,8 @@
             // splitMain.Panel2
             // 
             splitMain.Panel2.Controls.Add(splitContent);
-            splitMain.Size = new Size(1391, 766);
-            splitMain.SplitterDistance = 219;
+            splitMain.Size = new Size(1814, 847);
+            splitMain.SplitterDistance = 285;
             splitMain.TabIndex = 10;
             // 
             // grpDevice
@@ -242,7 +258,7 @@
             grpDevice.Dock = DockStyle.Fill;
             grpDevice.Location = new Point(0, 0);
             grpDevice.Name = "grpDevice";
-            grpDevice.Size = new Size(219, 766);
+            grpDevice.Size = new Size(285, 847);
             grpDevice.TabIndex = 0;
             grpDevice.TabStop = false;
             grpDevice.Text = "设备状态";
@@ -407,8 +423,8 @@
             // splitContent.Panel2
             // 
             splitContent.Panel2.Controls.Add(grpAlarm);
-            splitContent.Size = new Size(1168, 766);
-            splitContent.SplitterDistance = 671;
+            splitContent.Size = new Size(1525, 847);
+            splitContent.SplitterDistance = 876;
             splitContent.TabIndex = 0;
             // 
             // grpTags
@@ -417,7 +433,7 @@
             grpTags.Dock = DockStyle.Fill;
             grpTags.Location = new Point(0, 0);
             grpTags.Name = "grpTags";
-            grpTags.Size = new Size(671, 766);
+            grpTags.Size = new Size(876, 847);
             grpTags.TabIndex = 0;
             grpTags.TabStop = false;
             grpTags.Text = "实时点位";
@@ -428,7 +444,7 @@
             grpAlarm.Dock = DockStyle.Fill;
             grpAlarm.Location = new Point(0, 0);
             grpAlarm.Name = "grpAlarm";
-            grpAlarm.Size = new Size(493, 766);
+            grpAlarm.Size = new Size(645, 847);
             grpAlarm.TabIndex = 0;
             grpAlarm.TabStop = false;
             grpAlarm.Text = "当前报警";
@@ -437,7 +453,7 @@
             // 
             AutoScaleDimensions = new SizeF(13F, 28F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1391, 878);
+            ClientSize = new Size(1814, 958);
             Controls.Add(splitMain);
             Controls.Add(statusStrip1);
             Controls.Add(toolStrip1);
@@ -445,6 +461,7 @@
             MainMenuStrip = menuStrip1;
             Name = "Form1";
             Text = "Form1";
+            FormClosing += Form1_FormClosing;
             Load += Form1_Load;
             ((System.ComponentModel.ISupportInitialize)dgvTags).EndInit();
             ((System.ComponentModel.ISupportInitialize)dgvAlarms).EndInit();
@@ -516,5 +533,7 @@
         private Label lblCardRunStateValue;
         private Label lblCardDbStateValue;
         private ToolStripMenuItem 配置管理ToolStripMenuItem;
+        private ToolStripLabel toolStripLabelDeviceFilter;
+        private ToolStripComboBox toolStripCboDeviceFilter;
     }
 }
