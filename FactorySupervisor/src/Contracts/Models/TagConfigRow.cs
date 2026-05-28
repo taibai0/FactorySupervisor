@@ -13,7 +13,7 @@ namespace FactorySupervisor.src.Contracts.Models
         public string Name { get; set; } = "";
         public string Address { get; set; } = "";
         public string DataType { get; set; } = "";
-        public int ScanMs { get; set; }
+        public string ScanMs { get; set; } = "";
         public bool ArchiveEnabled { get; set; }
         public bool Enabled { get; set; }
     }

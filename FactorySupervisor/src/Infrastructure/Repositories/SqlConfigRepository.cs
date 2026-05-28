@@ -1,8 +1,10 @@
 ﻿using FactorySupervisor.src.Contracts.Abstractions;
 using FactorySupervisor.src.Contracts.Models;
 using FactorySupervisor.src.Infrastructure.Data;
+using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,17 +16,17 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
         public Task<IReadOnlyList<AlarmRuleConfigRow>> GetAlarmRulesAsync(CancellationToken ct = default)
         {
             const string sql = """
-        SELECT
-            Id,
-            TagId,
-            Name,
-            Level,
-            ConditionType,
-            Threshold,
-            Enabled
-        FROM dbo.AlarmRuleConfig
-        ORDER BY Name;
-        """;
+            SELECT
+                Id,
+                TagId,
+                Name,
+                Level,
+                ConditionType,
+                Threshold,
+                Enabled
+            FROM dbo.AlarmRuleConfig
+            ORDER BY Name;
+            """;
 
             return DbHelper.QueryAsync(sql, reader => new AlarmRuleConfigRow
             {
@@ -33,7 +35,7 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                 Name = reader.GetString(reader.GetOrdinal("Name")),
                 Level = reader.GetString(reader.GetOrdinal("Level")),
                 ConditionType = reader.GetString(reader.GetOrdinal("ConditionType")),
-                Threshold = reader.GetDouble(reader.GetOrdinal("Threshold")),
+                Threshold = reader.GetDouble(reader.GetOrdinal("Threshold")).ToString(),
                 Enabled = reader.GetBoolean(reader.GetOrdinal("Enabled"))
             }, ct, []);
         }
@@ -41,23 +43,23 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
         public Task<IReadOnlyList<DeviceConfigRow>> GetDevicesAsync(CancellationToken ct = default)
         {
             const string sql = """
-        SELECT
-            Id,
-            Name,
-            ProtocolType,
-            Ip,
-            Port,
-            Enabled,
-            ComPort,
-            BaudRate,
-            DataBits,
-            Parity,
-            StopBits,
-            UnitId,
-            TimeoutMs
-        FROM dbo.DeviceConfig
-        ORDER BY Name;
-        """;
+            SELECT
+                Id,
+                Name,
+                ProtocolType,
+                Ip,
+                Port,
+                Enabled,
+                ComPort,
+                BaudRate,
+                DataBits,
+                Parity,
+                StopBits,
+                UnitId,
+                TimeoutMs
+            FROM dbo.DeviceConfig
+            ORDER BY Name;
+            """;
 
             return DbHelper.QueryAsync(sql, reader => new DeviceConfigRow
             {
@@ -102,10 +104,82 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                 Name = reader.GetString(reader.GetOrdinal("Name")),
                 Address = reader.GetString(reader.GetOrdinal("Address")),
                 DataType = reader.GetString(reader.GetOrdinal("DataType")),
-                ScanMs = reader.GetInt32(reader.GetOrdinal("ScanMs")),
+                ScanMs = reader.GetInt32(reader.GetOrdinal("ScanMs")).ToString(),
                 ArchiveEnabled = reader.GetBoolean(reader.GetOrdinal("ArchiveEnabled")),
                 Enabled = reader.GetBoolean(reader.GetOrdinal("Enabled"))
             }, ct, []);
         }
+
+        public Task<int> UpdateAlarmRuleAsync(AlarmRuleConfigRow row, CancellationToken ct = default)
+        {
+            if (!double.TryParse(row.Threshold, out var threshold))
+            {
+                throw new ArgumentException($"报警规则 {row.Name} 的阈值必须是数字。", nameof(row));
+            }
+
+            const string sql = """
+                update dbo.AlarmRuleConfig
+                set
+                    Enabled=@Enabled,
+                    Threshold=@Threshold
+                where Id=@Id;
+                """;
+
+            var parameters = new[]
+            {
+                new SqlParameter("@Id",SqlDbType.UniqueIdentifier){Value=row.Id},
+                new SqlParameter("@Enabled",SqlDbType.Bit){Value=row.Enabled},
+                new SqlParameter("@Threshold",SqlDbType.Float){Value=threshold}
+            };
+
+            return DbHelper.ExecuteNonQueryAsync(sql, ct, parameters);
+        }
+
+        public Task<int> UpdateDeviceAsync(DeviceConfigRow row, CancellationToken ct = default)
+        {
+            const string sql = """
+                update dbo.DeviceConfig
+                set
+                    Enabled=@Enabled
+                where Id=@Id;
+                """;
+
+            var parameters = new[]
+            {
+                new SqlParameter("@Id",SqlDbType.UniqueIdentifier){Value=row.Id},
+                new SqlParameter("@Enabled",SqlDbType.Bit){Value=row.Enabled}
+            };
+
+            return DbHelper.ExecuteNonQueryAsync(sql,ct,parameters);
+        }
+
+        public Task<int> UpdateTagAsync(TagConfigRow row, CancellationToken ct = default)
+        {
+            if (!int.TryParse(row.ScanMs, out var scanMs))
+            {
+                throw new ArgumentException($"点位 {row.Name} 的 ScanMs 必须是整数。", nameof(row));
+            }
+
+            const string sql = """
+                update dbo.TagConfig
+                set
+                    ScanMs=@ScanMs,
+                    ArchiveEnabled = @ArchiveEnabled,
+                    Enabled=@Enabled
+                where Id=@Id;
+                """;
+
+            var parameters = new[]
+            {
+                new SqlParameter("@Id",SqlDbType.UniqueIdentifier){Value= row.Id},
+                new SqlParameter("@ArchiveEnabled",SqlDbType.Bit){Value=row.ArchiveEnabled},
+                new SqlParameter("@ScanMs",SqlDbType.Int){Value=scanMs},
+                new SqlParameter("@Enabled",SqlDbType.Bit){Value=row.Enabled}
+            };
+
+            return DbHelper.ExecuteNonQueryAsync(sql, ct, parameters);
+        }
+
+
     }
 }

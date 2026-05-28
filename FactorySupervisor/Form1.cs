@@ -46,6 +46,8 @@ namespace FactorySupervisor
         private CancellationTokenSource? _cts;
         private AcquisitionService? _acquisitionService;
 
+        private ConfigForm? _configForm;
+
         public Form1()
         {
             InitializeComponent();
@@ -406,10 +408,48 @@ namespace FactorySupervisor
             }
         }
 
+        //打开配置窗口
         private void 配置管理ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            using var form = new ConfigForm();
-            form.ShowDialog(this);
+            if (_configForm is not null && !_configForm.IsDisposed)
+            {
+                _configForm.Activate();
+                return;
+            }
+
+            _configForm = new ConfigForm();
+
+            _configForm.ConfigSaved += ConfigForm_ConfigSaved;
+
+            //窗口关闭后，把引用清空，方便下次重新打开
+            _configForm.FormClosed += (_, _) =>
+            {
+                _configForm = null;
+            };
+
+            //不阻塞主窗口
+            _configForm.Show();
+        }
+
+        private async void ConfigForm_ConfigSaved(object? sender, EventArgs e)
+        {
+            await InitTagRowsAsync();
+
+            dgvTags.Refresh();
+
+            if (_isRunning)
+            {
+                MessageBox.Show("点位配置已刷新，采集服务将在下一轮循环使用最新配置。");
+            }
+        }
+
+        //关闭主窗口的同时关闭其他窗口
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if(_configForm is not null && !_configForm.IsDisposed)
+            {
+                _configForm.Close();
+            }
         }
     }
 }

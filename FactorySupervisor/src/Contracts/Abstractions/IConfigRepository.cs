@@ -14,5 +14,11 @@ namespace FactorySupervisor.src.Contracts.Abstractions
         Task<IReadOnlyList<TagConfigRow>> GetTagsAsync(CancellationToken ct = default);
 
         Task<IReadOnlyList<AlarmRuleConfigRow>> GetAlarmRulesAsync(CancellationToken ct = default);
+
+        Task<int> UpdateTagAsync(TagConfigRow row,CancellationToken ct = default);
+
+        Task<int> UpdateDeviceAsync(DeviceConfigRow row,CancellationToken ct = default);
+
+        Task<int> UpdateAlarmRuleAsync(AlarmRuleConfigRow row,CancellationToken ct = default);
     }
 }

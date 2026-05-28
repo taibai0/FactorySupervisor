@@ -13,7 +13,7 @@ namespace FactorySupervisor.src.Contracts.Models
         public string Name { get; set; } = "";
         public string Level { get; set; } = "";
         public string ConditionType { get; set; } = "";
-        public double Threshold { get; set; }
+        public string Threshold { get; set; } = "";
         public bool Enabled { get; set; }
     }
 }
