@@ -29,7 +29,7 @@ namespace FactorySupervisor
         //datagridview显示元素
         private readonly BindingList<TagGridRow> _tagRows = new();
         private readonly Dictionary<Guid, TagGridRow> _tagRowMap = new();
-        private readonly BindingList<AlarmGridRow> _alarmRows= new();
+        private readonly BindingList<AlarmGridRow> _alarmRows = new();
         private readonly Dictionary<Guid, AlarmGridRow> _alarmRowMap = new();
 
         //状态读取服务
@@ -179,9 +179,9 @@ namespace FactorySupervisor
             }
 
             //新增或更新当前报警
-            foreach(var alarm in alarms)
+            foreach (var alarm in alarms)
             {
-                if(!_alarmRowMap.TryGetValue(alarm.RuleId, out var row))
+                if (!_alarmRowMap.TryGetValue(alarm.RuleId, out var row))
                 {
                     row = new AlarmGridRow
                     {
@@ -371,13 +371,13 @@ namespace FactorySupervisor
                 lblDeviceName.Text = "设备名称： --";
                 lblProtocol.Text = "协议：--";
                 lblComPort.Text = "串口：--";
-                
+
             }
             var device = devices[0];
 
             lblDeviceName.Text = $"设备名称：{device.Name}";
             lblProtocol.Text = $"协议：{device.ProtocolType}";
-           
+
             lblComPort.Text = $"串口：{device.ComPort ?? "--"}";
         }
 
@@ -406,6 +406,10 @@ namespace FactorySupervisor
             }
         }
 
-       
+        private void 配置管理ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            using var form = new ConfigForm();
+            form.ShowDialog(this);
+        }
     }
 }
