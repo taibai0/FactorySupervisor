@@ -40,6 +40,8 @@ namespace FactorySupervisor
             dgvTags.AutoGenerateColumns = true;
             dgvAlarmRules.AutoGenerateColumns = true;
 
+            
+
             Load += ConfigForm_Load;
             dgvTags.CellValueChanged += dvgTags_CellValueChaged;
             dgvTags.CurrentCellDirtyStateChanged += dgvTags_CurrentCellDirtyStateChanged;

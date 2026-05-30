@@ -33,6 +33,8 @@ namespace FactorySupervisor
             tabConfig = new TabControl();
             toolTipPermissions = new ToolTip();
             tabDevices = new TabPage();
+            panelDeviceActions = new Panel();
+            btnSaveDevices = new Button();
             dgvDevices = new DataGridView();
             panelDeviceActions = new Panel();
             btnSaveDevices = new Button();
@@ -42,18 +44,22 @@ namespace FactorySupervisor
             btnAddTag = new Button();
             btnSaveTags = new Button();
             tabAlarmRules = new TabPage();
+            panelAlarmActions = new Panel();
+            btnAlarmRuleSave = new Button();
             dgvAlarmRules = new DataGridView();
             panelAlarmActions = new Panel();
             btnAlarmRuleSave = new Button();
             btnAddDevice = new Button();
             tabConfig.SuspendLayout();
             tabDevices.SuspendLayout();
+            panelDeviceActions.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvDevices).BeginInit();
             panelDeviceActions.SuspendLayout();
             tabTags.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvTags).BeginInit();
             panelTagActions.SuspendLayout();
             tabAlarmRules.SuspendLayout();
+            panelAlarmActions.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvAlarmRules).BeginInit();
             panelAlarmActions.SuspendLayout();
             SuspendLayout();
@@ -81,6 +87,26 @@ namespace FactorySupervisor
             tabDevices.TabIndex = 0;
             tabDevices.Text = "设备配置";
             tabDevices.UseVisualStyleBackColor = true;
+            // 
+            // panelDeviceActions
+            // 
+            panelDeviceActions.Controls.Add(btnSaveDevices);
+            panelDeviceActions.Dock = DockStyle.Top;
+            panelDeviceActions.Location = new Point(3, 3);
+            panelDeviceActions.Name = "panelDeviceActions";
+            panelDeviceActions.Size = new Size(2373, 45);
+            panelDeviceActions.TabIndex = 1;
+            // 
+            // btnSaveDevices
+            // 
+            btnSaveDevices.BackColor = Color.Salmon;
+            btnSaveDevices.Location = new Point(2204, 3);
+            btnSaveDevices.Name = "btnSaveDevices";
+            btnSaveDevices.Size = new Size(166, 39);
+            btnSaveDevices.TabIndex = 0;
+            btnSaveDevices.Text = "保存设备配置";
+            btnSaveDevices.UseVisualStyleBackColor = false;
+            btnSaveDevices.Click += btnSaveDevices_Click;
             // 
             // dgvDevices
             // 
@@ -128,6 +154,17 @@ namespace FactorySupervisor
             tabTags.TabIndex = 1;
             tabTags.Text = "点位配置";
             tabTags.UseVisualStyleBackColor = true;
+
+            // 
+            // panelTagActions
+            // 
+            panelTagActions.Controls.Add(btnSaveTags);
+            panelTagActions.Dock = DockStyle.Top;
+            panelTagActions.Location = new Point(3, 3);
+            panelTagActions.Name = "panelTagActions";
+            panelTagActions.Size = new Size(2373, 45);
+            panelTagActions.TabIndex = 2;
+
             // 
             // dgvTags
             // 
@@ -187,6 +224,26 @@ namespace FactorySupervisor
             tabAlarmRules.Text = "报警规则";
             tabAlarmRules.UseVisualStyleBackColor = true;
             // 
+            // panelAlarmActions
+            // 
+            panelAlarmActions.Controls.Add(btnAlarmRuleSave);
+            panelAlarmActions.Dock = DockStyle.Top;
+            panelAlarmActions.Location = new Point(3, 3);
+            panelAlarmActions.Name = "panelAlarmActions";
+            panelAlarmActions.Size = new Size(2373, 45);
+            panelAlarmActions.TabIndex = 2;
+            // 
+            // btnAlarmRuleSave
+            // 
+            btnAlarmRuleSave.BackColor = Color.LightCoral;
+            btnAlarmRuleSave.Location = new Point(2189, 3);
+            btnAlarmRuleSave.Name = "btnAlarmRuleSave";
+            btnAlarmRuleSave.Size = new Size(179, 40);
+            btnAlarmRuleSave.TabIndex = 0;
+            btnAlarmRuleSave.Text = "保存报警规则";
+            btnAlarmRuleSave.UseVisualStyleBackColor = false;
+            btnAlarmRuleSave.Click += btnAlarmRuleSave_Click;
+            // 
             // dgvAlarmRules
             // 
             dgvAlarmRules.AllowUserToAddRows = false;
@@ -245,12 +302,14 @@ namespace FactorySupervisor
             Load += ConfigForm_Load;
             tabConfig.ResumeLayout(false);
             tabDevices.ResumeLayout(false);
+            panelDeviceActions.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvDevices).EndInit();
             panelDeviceActions.ResumeLayout(false);
             tabTags.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvTags).EndInit();
             panelTagActions.ResumeLayout(false);
             tabAlarmRules.ResumeLayout(false);
+            panelAlarmActions.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvAlarmRules).EndInit();
             panelAlarmActions.ResumeLayout(false);
             ResumeLayout(false);
