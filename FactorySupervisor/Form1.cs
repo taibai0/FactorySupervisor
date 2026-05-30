@@ -123,12 +123,30 @@ namespace FactorySupervisor
             _isRunning = false;
             UpdateStatus();
             await LoadDeviceInfoAsync();
-
+            MarkUiTagsStopped();
             await WriteAuditAsync("StopAcquisition", "停止采集服务");
+        }
+
+        private void MarkUiTagsStopped()
+        {
+            foreach (var row in _tagRows)
+            {
+                row.Quality = "None";
+                row.Error = "采集已停止";
+                row.Time = "";
+            }
+
+            dgvTags.Refresh();
         }
 
         private void timerRefresh_Tick(object sender, EventArgs e)
         {
+            if (!_isRunning)
+            {
+                UpdateStatus();
+                return;
+            }
+
             var hasAnyValue = false;
 
             foreach (var pair in _tagRowMap)
@@ -425,7 +443,7 @@ namespace FactorySupervisor
                 return;
             }
 
-            _configForm = new ConfigForm(_authService, _auditLogRepository);
+            _configForm = new ConfigForm(_authService, _auditLogRepository,_factory,_tagRepo);
 
             _configForm.ConfigSaved += ConfigForm_ConfigSaved;
 

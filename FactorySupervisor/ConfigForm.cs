@@ -26,21 +26,27 @@ namespace FactorySupervisor
 
         private readonly IAuthService _authService;
         private readonly IAuditLogRepository _auditLogRepository;
+        private readonly ITagRepository _tagRepository;
+
+        private readonly IProtocolClientFactory _clientFactory;
 
         private object? _editingOldValue;
 
         public event EventHandler? ConfigSaved;
-        public ConfigForm(IAuthService authService,IAuditLogRepository auditLogRepository)
+        public ConfigForm(IAuthService authService,
+            IAuditLogRepository auditLogRepository,
+            IProtocolClientFactory clientFactory,
+            ITagRepository tagRepository)
         {
             InitializeComponent();
             _authService = authService;
             _auditLogRepository = auditLogRepository;
+            _clientFactory = clientFactory;
+            _tagRepository = tagRepository;
 
             dgvDevices.AutoGenerateColumns = true;
             dgvTags.AutoGenerateColumns = true;
             dgvAlarmRules.AutoGenerateColumns = true;
-
-            
 
             Load += ConfigForm_Load;
             dgvTags.CellValueChanged += dvgTags_CellValueChaged;
@@ -50,7 +56,8 @@ namespace FactorySupervisor
             dgvAlarmRules.DataError += dgvConfig_DataError;
 
             ApplyConfigPermissions();
-
+          
+            
         }
 
         /// <summary>
@@ -69,6 +76,9 @@ namespace FactorySupervisor
         private bool CanManageAlarmRules()
             => _authService.HasRole(UserRole.Admin);
 
+        private bool CanTestDeviceConnection()
+            => _authService.HasRole(UserRole.Admin, UserRole.Engineer);
+
 
 
         private void ApplyConfigPermissions()
@@ -76,11 +86,13 @@ namespace FactorySupervisor
             // 配置权限做成三档：Admin 管全局配置，Engineer 管点位，Operator 只读。
             ApplyButtonPermissionStyle(btnAddDevice, CanManageDevices(), "仅 Admin 可新增设备");
             ApplyButtonPermissionStyle(btnSaveDevices, CanManageDevices(), "仅 Admin 可保存设备配置");
-
             ApplyButtonPermissionStyle(btnAddTag, CanManageTags(), "仅 Admin / Engineer 可新增点位");
             ApplyButtonPermissionStyle(btnSaveTags, CanManageTags(), "仅 Admin / Engineer 可保存点位配置");
-
             ApplyButtonPermissionStyle(btnAlarmRuleSave, CanManageAlarmRules(), "仅 Admin 可保存报警规则");
+            ApplyButtonPermissionStyle(btnEditDevice, CanManageDevices(), "仅Admin可以编辑设备");
+            ApplyButtonPermissionStyle(btnEditTag, CanManageTags(), "Admin / Engineer 可编辑点位配置");
+            ApplyButtonPermissionStyle(btnTestDeviceConnection, CanTestDeviceConnection(), "仅 Admin / Engineer 可测试设备连接");
+
         }
 
         private void ApplyButtonPermissionStyle(Button button, bool allowed, string deniedTip)
@@ -533,11 +545,11 @@ namespace FactorySupervisor
         /// <param name="action">行为</param>
         /// <param name="detail">细节</param>
         /// <returns></returns>
-        private async Task WriteAuditAsync(string action,string detail)
+        private async Task WriteAuditAsync(string action, string detail)
         {
             var user = _authService.CurrentUser;
 
-            if(user is null)
+            if (user is null)
             {
                 return;
             }
@@ -552,6 +564,167 @@ namespace FactorySupervisor
             };
 
             await _auditLogRepository.InsertAsync(log);
+        }
+
+        /// <summary>
+        /// 编辑设备
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private async void btnEditDevice_Click(object sender, EventArgs e)
+        {
+            if (!CanManageDevices())
+            {
+                MessageBox.Show("当前用户没有编辑设备权限");
+                return;
+            }
+
+            if (dgvDevices.CurrentRow?.DataBoundItem is not DeviceConfigRow row)
+            {
+                MessageBox.Show("请先选择需要编辑的设备");
+                return;
+            }
+
+            using var form = new DeviceEditForm(row);
+
+            if (form.ShowDialog(this) != DialogResult.OK || form.Device == null)
+            {
+                return;
+            }
+
+            await _configRepository.UpdateDeviceAsync(form.Device);
+
+            await WriteAuditAsync(
+                "UpdateDevice",
+                $"编辑设备：{form.Device.Name},协议：{form.Device.ProtocolType}");
+
+            MessageBox.Show("设备保存成功");
+            ConfigSaved?.Invoke(this, EventArgs.Empty);
+            ConfigureDeviceGrid();
+            await LoadDevicesAsync();
+        }
+
+        /// <summary>
+        /// 编辑点位
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private async void btnEditTag_Click(object sender, EventArgs e)
+        {
+            if (!CanManageTags())
+            {
+                MessageBox.Show("当前用户没有编辑用户的权限");
+                return;
+            }
+
+            if (dgvTags.CurrentRow.DataBoundItem is not TagConfigRow row)
+            {
+                MessageBox.Show("请先选择需要编辑的点位");
+                return;
+            }
+
+            var devices = await _configRepository.GetDevicesAsync();
+            if (devices.Count <= 0)
+            {
+                MessageBox.Show("请先新增设备之后编辑点位");
+                return;
+            }
+
+            using var form = new TagEditForm(devices, row);
+            if (form.ShowDialog(this) != DialogResult.OK || form.CreatedTag == null)
+            {
+                return;
+            }
+
+            await _configRepository.UpdateTagAsync(form.CreatedTag);
+            await WriteAuditAsync(
+                "UpdateTag",
+                $"编辑点位：{form.CreatedTag.Name}，地址：{form.CreatedTag.Address}，点位Id：{form.CreatedTag.Id}");
+
+            MessageBox.Show("点位保存成功");
+            ConfigSaved?.Invoke(this, EventArgs.Empty);
+            ConfigureTagGrid();
+            await LoadTagsAsync();
+        }
+
+        private async void btnTestDeviceConnection_Click(object sender, EventArgs e)
+        {
+            if(!CanManageTags())
+            {
+                MessageBox.Show("当前用户没有测试连接的权限");
+                return;
+            }
+
+            if(dgvDevices.CurrentRow?.DataBoundItem is not DeviceConfigRow row)
+            {
+                MessageBox.Show("请先选择要测试的设备");
+                return;
+            }
+
+            var device = new Device(
+                row.Name,
+                Enum.Parse<ProtocolType>(row.ProtocolType),
+                row.Ip,
+                row.Port,
+                row.Enabled)
+            {
+                Id = row.Id
+            };
+
+            if (device.ProtocolType == ProtocolType.ModbusRtu)
+            {
+                device.ConfigureModbusRtu(
+                    row.ComPort,
+                    row.BaudRate,
+                    row.DataBits,
+                    row.Parity,
+                    row.StopBits,
+                    row.UnitId,
+                    row.TimeoutMs
+                    );
+            }
+
+            try
+            {
+                await using var client= _clientFactory.Create(device.ProtocolType);
+
+                using var cts = new CancellationTokenSource(row.TimeoutMs + 1000);
+
+                var conn = await client.ConnectAsync(device, cts.Token);
+
+                if (!conn.IsSuccess)
+                {
+                    MessageBox.Show($"串口打开失败：{conn.Error}");
+                    return;
+                }
+
+                var tags = await _tagRepository.GetByDeviceAsync(device.Id);
+
+                if (tags.Count == 0)
+                {
+                    MessageBox.Show("串口打开成功，但该设备没有启用点位，无法验证从站响应");
+                    return;
+                }
+                
+                var read = await client.ReadAsync(tags.Take(1).ToList(), cts.Token);
+
+                if (read.Success)
+                {
+                    MessageBox.Show("设备通信测试成功");
+                }
+                else
+                {
+                    MessageBox.Show($"串口已打开，但从站无响应或读取失败：{read.Error}");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"设备 {row.Name} 连接异常：{ex.Message}");
+
+                await WriteAuditAsync(
+                    "TestDeviceConnectionError",
+                    $"测试设备连接异常：{row.Name}，异常：{ex.Message}");
+            }
         }
     }
 }

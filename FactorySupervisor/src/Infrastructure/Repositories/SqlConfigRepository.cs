@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -257,16 +258,39 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
         public Task<int> UpdateDeviceAsync(DeviceConfigRow row, CancellationToken ct = default)
         {
             const string sql = """
-                update dbo.DeviceConfig
-                set
-                    Enabled=@Enabled
-                where Id=@Id;
+                UPDATE dbo.DeviceConfig
+                SET
+                    Name = @Name,
+                    ProtocolType = @ProtocolType,
+                    Ip = @Ip,
+                    Port = @Port,
+                    Enabled = @Enabled,
+                    ComPort = @ComPort,
+                    BaudRate = @BaudRate,
+                    DataBits = @DataBits,
+                    Parity = @Parity,
+                    StopBits = @StopBits,
+                    UnitId = @UnitId,
+                    TimeoutMs = @TimeoutMs
+                WHERE Id = @Id;
                 """;
 
             var parameters = new[]
             {
                 new SqlParameter("@Id",SqlDbType.UniqueIdentifier){Value=row.Id},
-                new SqlParameter("@Enabled",SqlDbType.Bit){Value=row.Enabled}
+                new SqlParameter("@Enabled",SqlDbType.Bit){Value=row.Enabled},
+                new SqlParameter("@Name",SqlDbType.Text){Value=row.Name},
+                new SqlParameter("@ProtocolType",SqlDbType.Text){ Value=row.ProtocolType},
+                new SqlParameter("@Ip",SqlDbType.Text){Value = row.Ip},
+                new SqlParameter("Port",SqlDbType.Int){ Value=row.Port},
+                new SqlParameter("@Comport",SqlDbType.Text){Value = row.ComPort},
+                new SqlParameter("@BaudRate",SqlDbType.Int){Value = row.BaudRate},
+                new SqlParameter("@DataBits",SqlDbType.Int){Value = row.DataBits},
+                new SqlParameter("@Parity",SqlDbType.Text){Value = row.Parity},
+                new SqlParameter("@StopBits",SqlDbType.Text){Value = row.StopBits},
+                new SqlParameter("@UnitId",row.UnitId),
+                new SqlParameter("@TimeoutMs",SqlDbType.Int){Value = row.TimeoutMs}
+
             };
 
             return DbHelper.ExecuteNonQueryAsync(sql,ct,parameters);
@@ -298,6 +322,7 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                 update dbo.TagConfig
                 set
                     Name=@Name,
+                    DeviceId=@DeviceId,
                     Address=@Address,
                     DataType=@DataType,
                     ScanMs=@ScanMs,
@@ -314,6 +339,7 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                 new SqlParameter("@DataType",SqlDbType.NVarChar,50){Value=row.DataType},
                 new SqlParameter("@ArchiveEnabled",SqlDbType.Bit){Value=row.ArchiveEnabled},
                 new SqlParameter("@ScanMs",SqlDbType.Int){Value=scanMs},
+                new SqlParameter("@DeviceId", SqlDbType.UniqueIdentifier){Value=row.DeviceId},
                 new SqlParameter("@Enabled",SqlDbType.Bit){Value=row.Enabled}
             };
 

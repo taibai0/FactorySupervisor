@@ -30,36 +30,34 @@ namespace FactorySupervisor
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
             tabConfig = new TabControl();
-            toolTipPermissions = new ToolTip();
             tabDevices = new TabPage();
-            panelDeviceActions = new Panel();
-            btnSaveDevices = new Button();
             dgvDevices = new DataGridView();
             panelDeviceActions = new Panel();
+            btnTestDeviceConnection = new Button();
+            btnEditDevice = new Button();
+            btnAddDevice = new Button();
             btnSaveDevices = new Button();
             tabTags = new TabPage();
             dgvTags = new DataGridView();
             panelTagActions = new Panel();
+            btnEditTag = new Button();
             btnAddTag = new Button();
             btnSaveTags = new Button();
             tabAlarmRules = new TabPage();
-            panelAlarmActions = new Panel();
-            btnAlarmRuleSave = new Button();
             dgvAlarmRules = new DataGridView();
             panelAlarmActions = new Panel();
             btnAlarmRuleSave = new Button();
-            btnAddDevice = new Button();
+            toolTipPermissions = new ToolTip(components);
             tabConfig.SuspendLayout();
             tabDevices.SuspendLayout();
-            panelDeviceActions.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvDevices).BeginInit();
             panelDeviceActions.SuspendLayout();
             tabTags.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvTags).BeginInit();
             panelTagActions.SuspendLayout();
             tabAlarmRules.SuspendLayout();
-            panelAlarmActions.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvAlarmRules).BeginInit();
             panelAlarmActions.SuspendLayout();
             SuspendLayout();
@@ -88,26 +86,6 @@ namespace FactorySupervisor
             tabDevices.Text = "设备配置";
             tabDevices.UseVisualStyleBackColor = true;
             // 
-            // panelDeviceActions
-            // 
-            panelDeviceActions.Controls.Add(btnSaveDevices);
-            panelDeviceActions.Dock = DockStyle.Top;
-            panelDeviceActions.Location = new Point(3, 3);
-            panelDeviceActions.Name = "panelDeviceActions";
-            panelDeviceActions.Size = new Size(2373, 45);
-            panelDeviceActions.TabIndex = 1;
-            // 
-            // btnSaveDevices
-            // 
-            btnSaveDevices.BackColor = Color.Salmon;
-            btnSaveDevices.Location = new Point(2204, 3);
-            btnSaveDevices.Name = "btnSaveDevices";
-            btnSaveDevices.Size = new Size(166, 39);
-            btnSaveDevices.TabIndex = 0;
-            btnSaveDevices.Text = "保存设备配置";
-            btnSaveDevices.UseVisualStyleBackColor = false;
-            btnSaveDevices.Click += btnSaveDevices_Click;
-            // 
             // dgvDevices
             // 
             dgvDevices.AllowUserToAddRows = false;
@@ -124,6 +102,8 @@ namespace FactorySupervisor
             // 
             // panelDeviceActions
             // 
+            panelDeviceActions.Controls.Add(btnTestDeviceConnection);
+            panelDeviceActions.Controls.Add(btnEditDevice);
             panelDeviceActions.Controls.Add(btnAddDevice);
             panelDeviceActions.Controls.Add(btnSaveDevices);
             panelDeviceActions.Dock = DockStyle.Top;
@@ -131,6 +111,39 @@ namespace FactorySupervisor
             panelDeviceActions.Name = "panelDeviceActions";
             panelDeviceActions.Size = new Size(2364, 45);
             panelDeviceActions.TabIndex = 1;
+            // 
+            // btnTestDeviceConnection
+            // 
+            btnTestDeviceConnection.BackColor = Color.PaleGreen;
+            btnTestDeviceConnection.Location = new Point(5, 2);
+            btnTestDeviceConnection.Name = "btnTestDeviceConnection";
+            btnTestDeviceConnection.Size = new Size(131, 40);
+            btnTestDeviceConnection.TabIndex = 3;
+            btnTestDeviceConnection.Text = "测试连接";
+            btnTestDeviceConnection.UseVisualStyleBackColor = false;
+            btnTestDeviceConnection.Click += btnTestDeviceConnection_Click;
+            // 
+            // btnEditDevice
+            // 
+            btnEditDevice.BackColor = Color.LightCoral;
+            btnEditDevice.Location = new Point(1852, 2);
+            btnEditDevice.Name = "btnEditDevice";
+            btnEditDevice.Size = new Size(123, 37);
+            btnEditDevice.TabIndex = 2;
+            btnEditDevice.Text = "编辑设备";
+            btnEditDevice.UseVisualStyleBackColor = false;
+            btnEditDevice.Click += btnEditDevice_Click;
+            // 
+            // btnAddDevice
+            // 
+            btnAddDevice.BackColor = Color.LightCoral;
+            btnAddDevice.Location = new Point(2027, 2);
+            btnAddDevice.Name = "btnAddDevice";
+            btnAddDevice.Size = new Size(131, 40);
+            btnAddDevice.TabIndex = 1;
+            btnAddDevice.Text = "新增设备";
+            btnAddDevice.UseVisualStyleBackColor = false;
+            btnAddDevice.Click += btnAddDevice_Click;
             // 
             // btnSaveDevices
             // 
@@ -150,21 +163,10 @@ namespace FactorySupervisor
             tabTags.Location = new Point(4, 37);
             tabTags.Name = "tabTags";
             tabTags.Padding = new Padding(3);
-            tabTags.Size = new Size(2379, 1096);
+            tabTags.Size = new Size(2370, 1096);
             tabTags.TabIndex = 1;
             tabTags.Text = "点位配置";
             tabTags.UseVisualStyleBackColor = true;
-
-            // 
-            // panelTagActions
-            // 
-            panelTagActions.Controls.Add(btnSaveTags);
-            panelTagActions.Dock = DockStyle.Top;
-            panelTagActions.Location = new Point(3, 3);
-            panelTagActions.Name = "panelTagActions";
-            panelTagActions.Size = new Size(2373, 45);
-            panelTagActions.TabIndex = 2;
-
             // 
             // dgvTags
             // 
@@ -175,20 +177,32 @@ namespace FactorySupervisor
             dgvTags.Location = new Point(3, 48);
             dgvTags.Name = "dgvTags";
             dgvTags.RowHeadersWidth = 72;
-            dgvTags.Size = new Size(2373, 1045);
+            dgvTags.Size = new Size(2364, 1045);
             dgvTags.TabIndex = 1;
             dgvTags.CellBeginEdit += dgvConfig_CellBeginEdit;
             dgvTags.CellEndEdit += dgvConfig_CellEndEdit;
             // 
             // panelTagActions
             // 
+            panelTagActions.Controls.Add(btnEditTag);
             panelTagActions.Controls.Add(btnAddTag);
             panelTagActions.Controls.Add(btnSaveTags);
             panelTagActions.Dock = DockStyle.Top;
             panelTagActions.Location = new Point(3, 3);
             panelTagActions.Name = "panelTagActions";
-            panelTagActions.Size = new Size(2373, 45);
+            panelTagActions.Size = new Size(2364, 45);
             panelTagActions.TabIndex = 2;
+            // 
+            // btnEditTag
+            // 
+            btnEditTag.BackColor = Color.LightCoral;
+            btnEditTag.Location = new Point(1857, 2);
+            btnEditTag.Name = "btnEditTag";
+            btnEditTag.Size = new Size(131, 40);
+            btnEditTag.TabIndex = 2;
+            btnEditTag.Text = "编辑点位";
+            btnEditTag.UseVisualStyleBackColor = false;
+            btnEditTag.Click += btnEditTag_Click;
             // 
             // btnAddTag
             // 
@@ -219,30 +233,10 @@ namespace FactorySupervisor
             tabAlarmRules.Location = new Point(4, 37);
             tabAlarmRules.Name = "tabAlarmRules";
             tabAlarmRules.Padding = new Padding(3);
-            tabAlarmRules.Size = new Size(2379, 1096);
+            tabAlarmRules.Size = new Size(2370, 1096);
             tabAlarmRules.TabIndex = 2;
             tabAlarmRules.Text = "报警规则";
             tabAlarmRules.UseVisualStyleBackColor = true;
-            // 
-            // panelAlarmActions
-            // 
-            panelAlarmActions.Controls.Add(btnAlarmRuleSave);
-            panelAlarmActions.Dock = DockStyle.Top;
-            panelAlarmActions.Location = new Point(3, 3);
-            panelAlarmActions.Name = "panelAlarmActions";
-            panelAlarmActions.Size = new Size(2373, 45);
-            panelAlarmActions.TabIndex = 2;
-            // 
-            // btnAlarmRuleSave
-            // 
-            btnAlarmRuleSave.BackColor = Color.LightCoral;
-            btnAlarmRuleSave.Location = new Point(2189, 3);
-            btnAlarmRuleSave.Name = "btnAlarmRuleSave";
-            btnAlarmRuleSave.Size = new Size(179, 40);
-            btnAlarmRuleSave.TabIndex = 0;
-            btnAlarmRuleSave.Text = "保存报警规则";
-            btnAlarmRuleSave.UseVisualStyleBackColor = false;
-            btnAlarmRuleSave.Click += btnAlarmRuleSave_Click;
             // 
             // dgvAlarmRules
             // 
@@ -253,7 +247,7 @@ namespace FactorySupervisor
             dgvAlarmRules.Location = new Point(3, 48);
             dgvAlarmRules.Name = "dgvAlarmRules";
             dgvAlarmRules.RowHeadersWidth = 72;
-            dgvAlarmRules.Size = new Size(2373, 1045);
+            dgvAlarmRules.Size = new Size(2364, 1045);
             dgvAlarmRules.TabIndex = 1;
             dgvAlarmRules.CellBeginEdit += dgvConfig_CellBeginEdit;
             dgvAlarmRules.CellEndEdit += dgvConfig_CellEndEdit;
@@ -266,7 +260,7 @@ namespace FactorySupervisor
             panelAlarmActions.Dock = DockStyle.Top;
             panelAlarmActions.Location = new Point(3, 3);
             panelAlarmActions.Name = "panelAlarmActions";
-            panelAlarmActions.Size = new Size(2373, 45);
+            panelAlarmActions.Size = new Size(2364, 45);
             panelAlarmActions.TabIndex = 2;
             // 
             // btnAlarmRuleSave
@@ -280,17 +274,6 @@ namespace FactorySupervisor
             btnAlarmRuleSave.UseVisualStyleBackColor = false;
             btnAlarmRuleSave.Click += btnAlarmRuleSave_Click;
             // 
-            // btnAddDevice
-            // 
-            btnAddDevice.BackColor = Color.LightCoral;
-            btnAddDevice.Location = new Point(2027, 2);
-            btnAddDevice.Name = "btnAddDevice";
-            btnAddDevice.Size = new Size(131, 40);
-            btnAddDevice.TabIndex = 1;
-            btnAddDevice.Text = "新增设备";
-            btnAddDevice.UseVisualStyleBackColor = false;
-            btnAddDevice.Click += btnAddDevice_Click;
-            // 
             // ConfigForm
             // 
             AutoScaleDimensions = new SizeF(13F, 28F);
@@ -302,22 +285,15 @@ namespace FactorySupervisor
             Load += ConfigForm_Load;
             tabConfig.ResumeLayout(false);
             tabDevices.ResumeLayout(false);
-            panelDeviceActions.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvDevices).EndInit();
             panelDeviceActions.ResumeLayout(false);
             tabTags.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvTags).EndInit();
             panelTagActions.ResumeLayout(false);
             tabAlarmRules.ResumeLayout(false);
-            panelAlarmActions.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvAlarmRules).EndInit();
             panelAlarmActions.ResumeLayout(false);
             ResumeLayout(false);
-        }
-
-        private void DgvTags_CellEndEdit(object sender, DataGridViewCellEventArgs e)
-        {
-            throw new NotImplementedException();
         }
 
         #endregion
@@ -338,5 +314,8 @@ namespace FactorySupervisor
         private Button btnAddDevice;
         private Button btnAddTag;
         private ToolTip toolTipPermissions;
+        private Button btnEditDevice;
+        private Button btnEditTag;
+        private Button btnTestDeviceConnection;
     }
 }

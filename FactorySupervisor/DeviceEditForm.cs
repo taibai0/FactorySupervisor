@@ -19,12 +19,38 @@ namespace FactorySupervisor
         private readonly Button btnOk = new();
         private readonly Button btnCancel = new();
 
+        private readonly DeviceConfigRow? _editingDevice;
+
         public DeviceConfigRow? Device { get; private set; }
 
         public DeviceEditForm()
         {
             InitializeUi();
             InitializeDefaults();
+
+        }
+
+        public DeviceEditForm(DeviceConfigRow? device)
+        {
+            InitializeUi();
+            InitializeDefaults();
+
+            _editingDevice = device;
+
+            Text = "编辑设备";
+
+            txtName.Text = device.Name;
+            cboProtocolType.Text = device.ProtocolType;
+            chkEnabled.Checked = device.Enabled;
+            txtIp.Text = device.Ip;
+            numPort.Value = device.Port;
+            txtComPort.Text = device.ComPort;
+            cboBaudRate.Text = device.BaudRate.ToString();
+            cboDataBits.Text = device.DataBits.ToString();
+            cboParity.Text = device.Parity;
+            cboStopBits.Text = device.StopBits;
+            numUnitId.Value = device.UnitId;
+            numTimeoutMs.Value = device.TimeoutMs;
         }
 
         private void InitializeUi()
@@ -153,7 +179,7 @@ namespace FactorySupervisor
 
             Device = new DeviceConfigRow
             {
-                Id = Guid.NewGuid(),
+                Id=_editingDevice?.Id??Guid.NewGuid(),
                 Name = txtName.Text.Trim(),
                 ProtocolType = cboProtocolType.Text,
                 Ip = txtIp.Text.Trim(),
@@ -170,6 +196,11 @@ namespace FactorySupervisor
 
             DialogResult = DialogResult.OK;
             Close();
+        }
+
+        private void InitializeComponent()
+        {
+
         }
 
         private bool ValidateInput()

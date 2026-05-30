@@ -14,6 +14,8 @@ namespace FactorySupervisor
         private readonly Button btnOk = new();
         private readonly Button btnCancel = new();
 
+        private readonly TagConfigRow? _editingTag;
+
         public TagConfigRow? CreatedTag { get; private set; }
 
         public TagEditForm(IReadOnlyList<DeviceConfigRow> devices)
@@ -22,6 +24,27 @@ namespace FactorySupervisor
             InitializeDefaults(devices);
         }
 
+        public TagEditForm(IReadOnlyList<DeviceConfigRow> devices,TagConfigRow tag)
+        {
+            InitializeUi();
+            InitializeDefaults(devices);
+
+            _editingTag = tag;
+            Text = "编辑点位";
+
+            cboDevice.SelectedValue = tag.DeviceId;
+            txtName.Text = tag.Name;
+            txtAddress.Text = tag.Address;
+            cboDataType.Text = tag.DataType;
+
+            if(int.TryParse(tag.ScanMs,out var scanMs))
+            {
+                numScanMs.Value = Math.Clamp(scanMs, (int)numScanMs.Minimum, (int)numScanMs.Maximum);
+            }
+
+            chkArchiveEnabled.Checked=tag.ArchiveEnabled;
+            chkEnabled.Checked=tag.Enabled;
+        }
         private void InitializeUi()
         {
             Text = "新增点位";
@@ -135,7 +158,7 @@ namespace FactorySupervisor
 
             CreatedTag = new TagConfigRow
             {
-                Id = Guid.NewGuid(),
+                Id = _editingTag?.Id ?? Guid.NewGuid(),
                 DeviceId = device.Id,
                 Name = txtName.Text.Trim(),
                 Address = txtAddress.Text.Trim(),
