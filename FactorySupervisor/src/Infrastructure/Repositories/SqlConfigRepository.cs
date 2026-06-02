@@ -94,7 +94,8 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                 DataType,
                 ScanMs,
                 ArchiveEnabled,
-                Enabled
+                Enabled,
+                ShowOnDashboard
             FROM dbo.TagConfig
             ORDER BY Name;
             """;
@@ -108,8 +109,71 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                 DataType = reader.GetString(reader.GetOrdinal("DataType")),
                 ScanMs = reader.GetInt32(reader.GetOrdinal("ScanMs")).ToString(),
                 ArchiveEnabled = reader.GetBoolean(reader.GetOrdinal("ArchiveEnabled")),
-                Enabled = reader.GetBoolean(reader.GetOrdinal("Enabled"))
+                Enabled = reader.GetBoolean(reader.GetOrdinal("Enabled")),
+                ShowOnDashboard = reader.GetBoolean(reader.GetOrdinal("ShowOnDashboard"))
             }, ct, []);
+        }
+
+
+        /// <summary>
+        /// 新增报警规则
+        /// </summary>
+        /// <param name="row"></param>
+        /// <param name="ct"></param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
+        public Task<int> InsertAlarmRuleAsync(AlarmRuleConfigRow row, CancellationToken ct = default)
+        {
+            if (row.TagId == Guid.Empty)
+            {
+                throw new ArgumentException("报警规则必须选择点位。", nameof(row));
+            }
+
+            if (string.IsNullOrWhiteSpace(row.Name))
+            {
+                throw new ArgumentException("报警规则名称不能为空。", nameof(row));
+            }
+
+            if (!double.TryParse(row.Threshold, out var threshold))
+            {
+                throw new ArgumentException($"报警规则 {row.Name} 的阈值必须是数字。", nameof(row));
+            }
+
+            const string sql = """
+            INSERT INTO dbo.AlarmRuleConfig
+            (
+                Id,
+                TagId,
+                Name,
+                Level,
+                ConditionType,
+                Threshold,
+                Enabled
+            )
+            VALUES
+            (
+                @Id,
+                @TagId,
+                @Name,
+                @Level,
+                @ConditionType,
+                @Threshold,
+                @Enabled
+            );
+         """;
+
+            var parameters = new[]
+            {
+                new SqlParameter("@Id", SqlDbType.UniqueIdentifier) { Value = row.Id },
+                new SqlParameter("@TagId", SqlDbType.UniqueIdentifier) { Value = row.TagId },
+                new SqlParameter("@Name", SqlDbType.NVarChar, 100) { Value = row.Name },
+                new SqlParameter("@Level", SqlDbType.NVarChar, 50) { Value = row.Level },
+                new SqlParameter("@ConditionType", SqlDbType.NVarChar, 50) { Value = row.ConditionType },
+                new SqlParameter("@Threshold", SqlDbType.Float) { Value = threshold },
+                new SqlParameter("@Enabled", SqlDbType.Bit) { Value = row.Enabled }
+            };
+
+            return DbHelper.ExecuteNonQueryAsync(sql, ct, parameters);
         }
 
         /// <summary>
@@ -193,7 +257,8 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                     DataType,
                     ScanMs,
                     ArchiveEnabled,
-                    Enabled
+                    ShowOnDashboard
+                    Enabled,
                 )
                 VALUES
                 (
@@ -204,6 +269,7 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                     @DataType,
                     @ScanMs,
                     @ArchiveEnabled,
+                    @ShowOnDashboard,
                     @Enabled
                 );
                 """;
@@ -217,7 +283,8 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                 new SqlParameter("@DataType", SqlDbType.NVarChar, 50){Value = row.DataType},
                 new SqlParameter("@ScanMs", SqlDbType.Int){Value = scanMs},
                 new SqlParameter("@ArchiveEnabled", SqlDbType.Bit){Value = row.ArchiveEnabled},
-                new SqlParameter("@Enabled", SqlDbType.Bit){Value = row.Enabled}
+                new SqlParameter("@Enabled", SqlDbType.Bit){Value = row.Enabled},
+                new SqlParameter("@ShowOnDashboard", SqlDbType.Bit) { Value = row.ShowOnDashboard }
             };
 
             return DbHelper.ExecuteNonQueryAsync(sql, ct, parameters);
@@ -327,7 +394,8 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                     DataType=@DataType,
                     ScanMs=@ScanMs,
                     ArchiveEnabled = @ArchiveEnabled,
-                    Enabled=@Enabled
+                    Enabled=@Enabled,
+                    ShowOnDashboard=@ShowOnDashboard
                 where Id=@Id;
                 """;
 
@@ -340,7 +408,8 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                 new SqlParameter("@ArchiveEnabled",SqlDbType.Bit){Value=row.ArchiveEnabled},
                 new SqlParameter("@ScanMs",SqlDbType.Int){Value=scanMs},
                 new SqlParameter("@DeviceId", SqlDbType.UniqueIdentifier){Value=row.DeviceId},
-                new SqlParameter("@Enabled",SqlDbType.Bit){Value=row.Enabled}
+                new SqlParameter("@Enabled",SqlDbType.Bit){Value=row.Enabled},
+                new SqlParameter("@ShowOnDashboard", SqlDbType.Bit) { Value = row.ShowOnDashboard }
             };
 
             return DbHelper.ExecuteNonQueryAsync(sql, ct, parameters);

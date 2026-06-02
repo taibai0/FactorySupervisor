@@ -9,6 +9,7 @@ using FactorySupervisor.src.Infrastructure.Protocol;
 using FactorySupervisor.src.Infrastructure.Repositories;
 using FactorySupervisor.src.UI.WinForms;
 using System.ComponentModel;
+using static System.Windows.Forms.AxHost;
 
 namespace FactorySupervisor
 {
@@ -50,6 +51,13 @@ namespace FactorySupervisor
         private ConfigForm? _configForm;
 
         private Guid? _selectedDeviceId;
+
+        /// <summary>
+        /// 关键点位卡片的控件集合
+        /// </summary>
+        private readonly Dictionary<Guid, TagCardControls> _tagCardMap = new();
+
+
         public Form1()
         {
             InitializeComponent();
@@ -67,17 +75,21 @@ namespace FactorySupervisor
             }
             ApplyPermissions();
             await LoadDeviceFilterAsync();
+            await RefreshDeviceCardsAsync();
             //await LoadDeviceInfoAsync();
 
             dgvTags.AutoGenerateColumns = true;
             dgvTags.DataSource = _tagRows;
+            await InitTagRowsAsync();
 
             dgvAlarms.AutoGenerateColumns = true;
             dgvAlarms.DataSource = _alarmRows;
+            ConfigureAlarmGrid();
 
             timerRefresh.Interval = 1000;
             timerRefresh.Start();
             UpdateStatus();
+            UpdateAlarmBanner();
         }
 
         private async void start_button_Click(object sender, EventArgs e)
@@ -101,7 +113,7 @@ namespace FactorySupervisor
                         _alarmHistoryRepository);
             _isRunning = true;
             UpdateStatus();
-            await LoadDeviceInfoAsync();
+            
 
             _acquisitionTask = RunBackgroundAsync(_acquisitionService.RunAsync);
             _alarmTask = RunBackgroundAsync(_alarmEvaluationService.RunAsync);
@@ -121,10 +133,10 @@ namespace FactorySupervisor
 
             _cts?.Cancel();
             _isRunning = false;
-            UpdateStatus();
-            await LoadDeviceInfoAsync();
+            UpdateStatus();           
             MarkUiTagsStopped();
             await WriteAuditAsync("StopAcquisition", "停止采集服务");
+            UpdateAlarmBanner();
         }
 
         private void MarkUiTagsStopped()
@@ -169,6 +181,8 @@ namespace FactorySupervisor
                 row.Quality = value.Quality.ToString();
                 row.Time = value.Timestamp.ToString("HH:mm:ss");
                 row.Error = value.Error ?? "";
+
+                UpdateTagCard(row);
             }
 
             if (hasAnyValue)
@@ -180,7 +194,48 @@ namespace FactorySupervisor
             dgvTags.Refresh();
             ApplyRowStyle();
             RefreshAlarmGrid();
+            UpdateAlarmBanner();
         }
+
+        /// <summary>
+        /// 更新点位卡片显示的值和状态
+        /// </summary>
+        /// <param name="row"></param>
+        /// <exception cref="NotImplementedException"></exception>
+        private void UpdateTagCard(TagGridRow row)
+        {
+           if(!_tagCardMap.TryGetValue(row.TagId,out var card))
+            {
+                return;
+            }
+
+            card.ValueLabel.Text = string.IsNullOrWhiteSpace(row.Value) ? "--" : row.Value;
+            card.QualityLabel.Text = row.Quality;
+            card.AddressLabel.Text = $"{row.Name} / {row.Address}";
+
+            if (row.Quality == "Good")
+            {
+                card.Panel.FillColor = Color.White;
+                card.Panel.RectColor = Color.FromArgb(80, 160, 255);
+                card.ValueLabel.ForeColor = Color.DodgerBlue;
+                card.QualityLabel.ForeColor = Color.ForestGreen;
+            }
+            else if (row.Quality == "Bad")
+            {
+                card.Panel.FillColor = Color.MistyRose;
+                card.Panel.RectColor = Color.Firebrick;
+                card.ValueLabel.ForeColor = Color.Firebrick;
+                card.QualityLabel.ForeColor = Color.Firebrick;
+            }
+            else
+            {
+                card.Panel.FillColor = Color.WhiteSmoke;
+                card.Panel.RectColor = Color.LightGray;
+                card.ValueLabel.ForeColor = Color.Gray;
+                card.QualityLabel.ForeColor = Color.Gray;
+            }
+        }
+
 
         //刷新报警表
         private void RefreshAlarmGrid()
@@ -211,15 +266,43 @@ namespace FactorySupervisor
                     _alarmRows.Add(row);
                     _alarmRowMap[alarm.RuleId] = row;
                 }
+                var tagRow=_allTagRows.FirstOrDefault(t=>t.TagId == alarm.TagId);
 
+                row.DeviceName = tagRow?.DeviceName ?? "--";
+                row.TagName = tagRow?.Name ?? "--";
+                row.Address = tagRow?.Address ?? "--";
                 row.RuleName = alarm.RuleName;
-                row.Level = alarm.Level.ToString();
-                row.State = alarm.State.ToString();
+                row.Level = ToAlarmLevelText(alarm.Level.ToString());
+                row.State = ToAlarmStateText(alarm.State.ToString());
                 row.TriggerValue = alarm.TriggerValue?.ToString() ?? "";
                 row.TriggerTime = alarm.TriggerTime.ToString("HH:mm:ss");
             }
+            ConfigureAlarmGrid();
             dgvAlarms.Refresh();
             ApplyAlarmRowStyle();
+        }
+
+        private string ToAlarmStateText(string state)
+        {
+            return state switch
+            {
+                "Active" => "触发中",
+                "Recovered" => "已恢复",
+                "Acknowledged" => "已确认",
+                _ => state
+            };
+        }
+
+        private string ToAlarmLevelText(string level)
+        {
+            return level switch
+            {
+                "Low" => "低",
+                "Medium" => "中",
+                "High" => "高",
+                "Critical" => "严重",
+                _ => level
+            };
         }
 
         //更新点位采集状态
@@ -312,13 +395,30 @@ namespace FactorySupervisor
                         Value = "--",
                         Quality = "None",
                         Time = "",
-                        Error = ""
+                        Error = "",
+                        ShowOnDashboard = tag.ShowOnDashboard
                     };
                     _allTagRows.Add(row);
                 }
             }
-            ApplyTagFilter();
+            ApplyTagFilter();            
             ConfigureTagGrid();
+        }
+
+        private void BuildTagCards()
+        {
+            var host = flowTagCards.FlowLayoutPanel;
+            host.Controls.Clear();         
+            _tagCardMap.Clear();
+
+            foreach (var row in _tagRows.Where(r => r.ShowOnDashboard))
+            {
+                var card = CreateTagCard(row);
+
+                host.Controls.Add(card.Panel);
+                _tagCardMap[row.TagId] = card;
+            }
+           
         }
 
         private Task RunBackgroundAsync(Func<CancellationToken, Task> action)
@@ -389,25 +489,7 @@ namespace FactorySupervisor
         }
 
 
-        //获取当前设备信息
-        private async Task LoadDeviceInfoAsync()
-        {
-            var devices = await _deviceRepo.GetEnableDevicesAsync();
-
-            if (devices.Count == 0)
-            {
-                lblDeviceName.Text = "设备名称： --";
-                lblProtocol.Text = "协议：--";
-                lblComPort.Text = "串口：--";
-
-            }
-            var device = devices[0];
-
-            lblDeviceName.Text = $"设备名称：{device.Name}";
-            lblProtocol.Text = $"协议：{device.ProtocolType}";
-
-            lblComPort.Text = $"串口：{device.ComPort ?? "--"}";
-        }
+      
 
         //给报警表加颜色
         private void ApplyAlarmRowStyle()
@@ -416,12 +498,12 @@ namespace FactorySupervisor
             {
                 var level = gridRow.Cells["Level"]?.Value?.ToString();
 
-                if (level == "Critical")
+                if (level == "严重")
                 {
                     gridRow.DefaultCellStyle.BackColor = Color.MistyRose;
                     gridRow.DefaultCellStyle.ForeColor = Color.DarkRed;
                 }
-                else if (level == "High")
+                else if (level == "高")
                 {
                     gridRow.DefaultCellStyle.BackColor = Color.LemonChiffon;
                     gridRow.DefaultCellStyle.ForeColor = Color.DarkOrange;
@@ -443,7 +525,7 @@ namespace FactorySupervisor
                 return;
             }
 
-            _configForm = new ConfigForm(_authService, _auditLogRepository,_factory,_tagRepo);
+            _configForm = new ConfigForm(_authService, _auditLogRepository, _factory, _tagRepo);
 
             _configForm.ConfigSaved += ConfigForm_ConfigSaved;
 
@@ -467,13 +549,14 @@ namespace FactorySupervisor
             var oldSelectedDevicedId = _selectedDeviceId;
 
             await LoadDeviceFilterAsync();
+            await RefreshDeviceCardsAsync();
 
-            if(oldSelectedDevicedId is not null)
+            if (oldSelectedDevicedId is not null)
             {
-                for(var i=0;i<toolStripCboDeviceFilter.ComboBox.Items.Count;i++)
+                for (var i = 0; i < toolStripCboDeviceFilter.ComboBox.Items.Count; i++)
                 {
                     if (toolStripCboDeviceFilter.ComboBox.Items[i] is DeviceFilterItem item &&
-                        item.DeviceId== oldSelectedDevicedId)
+                        item.DeviceId == oldSelectedDevicedId)
                     {
                         toolStripCboDeviceFilter.ComboBox.SelectedIndex = i;
                         break;
@@ -541,17 +624,40 @@ namespace FactorySupervisor
             {
                 dgvTags.Columns["Error"].HeaderText = "错误";
             }
+            if(dgvTags.Columns.Contains("ShowOnDashboard"))
+            {
+                dgvTags.Columns["ShowOnDashboard"].Visible = false;
+            }
         }
 
-        private void toolStripCboDeviceFilter_SelectedIndexChanged(object sender, EventArgs e)
+        private async void toolStripCboDeviceFilter_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if(toolStripCboDeviceFilter.ComboBox.SelectedItem is not DeviceFilterItem item)
+            if (toolStripCboDeviceFilter.ComboBox.SelectedItem is not DeviceFilterItem item)
             {
                 return;
             }
 
             _selectedDeviceId = item.DeviceId;
+            await RefreshDeviceCardsAsync();
             ApplyTagFilter();
+        }
+
+        /// <summary>
+        /// 设备卡片刷新方法
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
+        private async Task RefreshDeviceCardsAsync()
+        {
+            var devices = await _deviceRepo.GetEnableDevicesAsync();
+
+            flowDeviceCards.Controls.Clear();
+
+            foreach (var device in devices)
+            {
+                var card = CreateDeviceCard(device);
+                flowDeviceCards.Controls.Add(card);
+            }
         }
 
         /// <summary>
@@ -567,13 +673,14 @@ namespace FactorySupervisor
                 ? _allTagRows
                 : _allTagRows.Where(r => r.DeviceId == _selectedDeviceId.Value).ToList();
 
-            foreach(var row in rows )
+            foreach (var row in rows)
             {
                 _tagRows.Add(row);
                 _tagRowMap[row.TagId] = row;
             }
 
             dgvTags.Refresh();
+            BuildTagCards();
         }
 
         /// <summary>
@@ -591,7 +698,7 @@ namespace FactorySupervisor
             }
         }
 
-        
+
         /// <summary>
         /// 加载当前可选的设备选项
         /// </summary>
@@ -620,12 +727,266 @@ namespace FactorySupervisor
             toolStripCboDeviceFilter.ComboBox.DataSource = items;
             toolStripCboDeviceFilter.ComboBox.DisplayMember = nameof(DeviceFilterItem.Name);
 
-            toolStripCboDeviceFilter.SelectedIndexChanged+= toolStripCboDeviceFilter_SelectedIndexChanged;
+            toolStripCboDeviceFilter.SelectedIndexChanged += toolStripCboDeviceFilter_SelectedIndexChanged;
 
             toolStripCboDeviceFilter.ComboBox.SelectedIndex = 0;
             _selectedDeviceId = null;
         }
+
+       
+
+        /// <summary>
+        /// 创建设备卡片
+        /// </summary>
+        /// <param name="device"></param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
+        private Control? CreateDeviceCard(Device device)
+        {
+            var isSelected=_selectedDeviceId== device.Id;
+
+            var card = new Sunny.UI.UIPanel
+            {
+                Width = flowDeviceCards.ClientSize.Width - 25,
+                Height = 86,
+                Margin = new Padding(4, 4, 4, 8),
+                FillColor = isSelected ? Color.FromArgb(230, 245, 255) : Color.Wheat,
+                RectColor = isSelected ? Color.DodgerBlue : Color.FromArgb(220, 225, 232),
+                Cursor = Cursors.Hand,
+                Tag = device.Id
+            };
+
+            var lblName = new Sunny.UI.UIPanel
+            {
+                Text = device.Name,
+                Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold),
+                Location = new Point(12, 10),
+                Size = new Size(card.Width - 24, 26)
+            };
+
+            var lblInfo = new Sunny.UI.UILabel
+            {
+                Text = $"{device.ProtocolType} | {device.ComPort ?? device.Ip}",
+                ForeColor = Color.DimGray,
+                Location = new Point(12, 40),
+                Size = new Size(card.Width - 24, 24)
+            };
+
+            card.Controls.Add(lblName);
+            card.Controls.Add(lblInfo);
+
+            card.Click += DeviceCard_Click;
+            lblName.Click += DeviceCard_Click;
+            lblInfo.Click += DeviceCard_Click;
+
+            return card;
+        }
+
+        /// <summary>
+        /// 点击卡片切换筛选
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        /// <exception cref="NotImplementedException"></exception>
+        private void DeviceCard_Click(object? sender, EventArgs e)
+        {
+            Guid? deviceId = null;
+
+            if(sender is Control control)
+            {
+                if(control.Tag is Guid id)
+                {
+                    deviceId = id;
+                }
+                else if(control.Parent?.Tag is Guid parentId)
+                {
+                    deviceId = parentId;
+                }
+            }
+
+            if(deviceId is null)
+            {
+                return;
+            }
+
+            SelectDeviceFilter(deviceId.Value);
+        }
+
+        /// <summary>
+        /// 选择设备的筛选方法
+        /// </summary>
+        /// <param name="value"></param>
+        /// <exception cref="NotImplementedException"></exception>
+        private void SelectDeviceFilter(Guid deviceId)
+        {
+            for(var i=0;i<toolStripCboDeviceFilter.ComboBox.Items.Count;i++)
+            {
+                if (toolStripCboDeviceFilter.ComboBox.Items[i] is DeviceFilterItem item &&
+                        item.DeviceId == deviceId)
+                {
+                    toolStripCboDeviceFilter.ComboBox.SelectedIndex = i;
+                    return;
+                }
+            }
+            toolStripCboDeviceFilter.ComboBox.SelectedIndex = 0;
+        }
+
+
+        private void ConfigureAlarmGrid()
+        {
+            dgvAlarms.AutoGenerateColumns = true;
+
+            dgvAlarms.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            dgvAlarms.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
+            dgvAlarms.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
+            dgvAlarms.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
+            dgvAlarms.ScrollBars = ScrollBars.Both;
+
+            if (dgvAlarms.Columns.Contains("RuleId"))
+            {
+                dgvAlarms.Columns["RuleId"].Visible = false;
+            }
+
+            SetAlarmColumn("DeviceName", "设备", 250);
+            SetAlarmColumn("TagName", "点位", 120);
+            SetAlarmColumn("Address", "地址", 100);
+            SetAlarmColumn("RuleName", "报警规则", 200);
+            SetAlarmColumn("Level", "等级", 90);
+            SetAlarmColumn("State", "状态", 90);
+            SetAlarmColumn("TriggerValue", "触发值", 100);
+            SetAlarmColumn("TriggerTime", "触发时间", 130);
+        }
+
+        private void SetAlarmColumn(string columnName, string headerText, int width)
+        {
+            if (!dgvAlarms.Columns.Contains(columnName))
+            {
+                return;
+            }
+
+            var column = dgvAlarms.Columns[columnName];
+            column.HeaderText = headerText;
+            column.Width = width;
+        }
+
+        /// <summary>
+        /// 创建点位卡片
+        /// </summary>
+        /// <param name="row"></param>
+        /// <returns></returns>
+        private TagCardControls CreateTagCard(TagGridRow row)
+        {
+            var panel = new Sunny.UI.UIPanel
+            {
+                Width = 230,
+                Height = 135,
+                Margin = new Padding(8),
+                FillColor = Color.White,
+                RectColor = Color.FromArgb(210, 220, 230)
+            };
+
+            var lblName = new Sunny.UI.UILabel
+            {
+                Text = row.DeviceName,
+                Location = new Point(10, 8),
+                Size = new Size(210, 24),
+                Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(35, 45, 60)
+            };
+
+            var lblAddress = new Sunny.UI.UILabel
+            {
+                Text = $"{row.Name} / {row.Address}",
+                Location = new Point(10, 34),
+                Size = new Size(210, 22),
+                Font = new Font("Microsoft YaHei UI", 8F, FontStyle.Regular),
+                ForeColor = Color.DimGray
+            };
+
+            var lblValue = new Sunny.UI.UILabel
+            {
+                Text = "--",
+                Location = new Point(10, 58),
+                Size = new Size(210, 42),
+                Font = new Font("Consolas", 18F, FontStyle.Bold),
+                ForeColor = Color.DodgerBlue
+            };
+
+            var lblQuality = new Sunny.UI.UILabel
+            {
+                Text = "None",
+                Location = new Point(10, 104),
+                Size = new Size(210, 22),
+                Font = new Font("Microsoft YaHei UI", 8F, FontStyle.Regular),
+                ForeColor = Color.Gray
+            };
+
+            panel.Controls.Add(lblName);
+            panel.Controls.Add(lblAddress);
+            panel.Controls.Add(lblValue);
+            panel.Controls.Add(lblQuality);
+
+            return new TagCardControls
+            {
+                Panel = panel,
+                NameLabel = lblName,
+                AddressLabel = lblAddress,
+                ValueLabel = lblValue,
+                QualityLabel = lblQuality
+            };
+        }
+
+        /// <summary>
+        /// 刷新报警
+        /// </summary>
+        private void UpdateAlarmBanner()
+        {
+            var alarms = _alarmStateStore.GetCurrentAlarms().ToList();
+
+            if (alarms.Count == 0)
+            {
+                pnlAlarmBanner.FillColor = Color.Honeydew;
+                pnlAlarmBanner.RectColor = Color.ForestGreen;
+                lblAlarmBanner.ForeColor = Color.ForestGreen;
+                lblAlarmBanner.Text = "系统运行正常";
+                return;
+            }
+
+            var topAlarm=alarms
+               .OrderByDescending(a=>GetAlarmLevelWeight(a.Level.ToString()))
+               .ThenByDescending(a => a.TriggerTime)
+               .First();
+
+            var tagRow=_allTagRows.FirstOrDefault(t => t.TagId == topAlarm.TagId);
+
+            var deviceName = tagRow?.DeviceName ?? "--";
+            var tagName = tagRow?.Name ?? "--";
+            var value = topAlarm.TriggerValue?.ToString() ?? "--";
+
+            pnlAlarmBanner.FillColor = Color.MistyRose;
+            pnlAlarmBanner.RectColor = Color.Firebrick;
+            lblAlarmBanner.ForeColor = Color.Firebrick;
+            lblAlarmBanner.Text = $"报警：{deviceName} / {tagName}，{topAlarm.RuleName}，当前值：{value}";
+        }
+
+        /// <summary>
+        /// 获取报警等级权重，用于排序显示最严重的报警在前面
+        /// </summary>
+        /// <param name="v"></param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
+        private object GetAlarmLevelWeight(string level)
+        {
+            return level switch
+            {
+                "Critical" => 4,
+                "High" => 3,
+                "Medium" => 2,
+                "Low" => 1,
+                _ => 0
+            };
+        }
     }
 
-   
+
 }

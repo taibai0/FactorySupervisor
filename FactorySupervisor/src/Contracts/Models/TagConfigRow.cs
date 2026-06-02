@@ -16,5 +16,7 @@ namespace FactorySupervisor.src.Contracts.Models
         public string ScanMs { get; set; } = "";
         public bool ArchiveEnabled { get; set; }
         public bool Enabled { get; set; }
+
+        public bool ShowOnDashboard { get; set; }
     }
 }

@@ -18,6 +18,7 @@ namespace FactorySupervisor.src.Domain.Entities
         public object? TriggerValue { get; init; }
         public DateTimeOffset TriggerTime { get; init; }=DateTimeOffset.UtcNow;
         public DateTimeOffset? RecoverTime { get; private set; }
+        public string DeviceName { get; init; } = "";
 
         public void Recover(DateTimeOffset time)
         {

@@ -25,7 +25,8 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                     Address,
                     DataType,
                     ScanMs,
-                    ArchiveEnabled
+                    ArchiveEnabled,
+                    ShowOnDashboard
                 FROM dbo.TagConfig
                 WHERE DeviceId = @DeviceId
                   AND Enabled = 1
@@ -52,7 +53,8 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                     reader.GetString(reader.GetOrdinal("Address")),
                     dataType,
                     reader.GetInt32(reader.GetOrdinal("ScanMs")),
-                    reader.GetBoolean(reader.GetOrdinal("ArchiveEnabled")))
+                    reader.GetBoolean(reader.GetOrdinal("ArchiveEnabled")),
+                    reader.GetBoolean(reader.GetOrdinal("ShowOnDashboard")))
                 {
                     Id = reader.GetGuid(reader.GetOrdinal("Id"))
                 };

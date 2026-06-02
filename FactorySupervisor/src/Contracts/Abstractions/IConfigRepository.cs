@@ -24,5 +24,8 @@ namespace FactorySupervisor.src.Contracts.Abstractions
         Task<int> InsertDeviceAsync(DeviceConfigRow row, CancellationToken ct = default);
 
         Task<int> InsertTagAsync(TagConfigRow row, CancellationToken ct = default);
+
+        Task<int> InsertAlarmRuleAsync(AlarmRuleConfigRow row, CancellationToken ct = default);
+
     }
 }

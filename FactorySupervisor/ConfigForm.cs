@@ -48,7 +48,6 @@ namespace FactorySupervisor
             dgvTags.AutoGenerateColumns = true;
             dgvAlarmRules.AutoGenerateColumns = true;
 
-            Load += ConfigForm_Load;
             dgvTags.CellValueChanged += dvgTags_CellValueChaged;
             dgvTags.CurrentCellDirtyStateChanged += dgvTags_CurrentCellDirtyStateChanged;
             dgvDevices.DataError += dgvConfig_DataError;
@@ -56,8 +55,8 @@ namespace FactorySupervisor
             dgvAlarmRules.DataError += dgvConfig_DataError;
 
             ApplyConfigPermissions();
-          
-            
+
+
         }
 
         /// <summary>
@@ -74,7 +73,7 @@ namespace FactorySupervisor
             => _authService.HasRole(UserRole.Admin);
 
         private bool CanManageAlarmRules()
-            => _authService.HasRole(UserRole.Admin);
+            => _authService.HasRole(UserRole.Admin, UserRole.Engineer);
 
         private bool CanTestDeviceConnection()
             => _authService.HasRole(UserRole.Admin, UserRole.Engineer);
@@ -92,27 +91,32 @@ namespace FactorySupervisor
             ApplyButtonPermissionStyle(btnEditDevice, CanManageDevices(), "仅Admin可以编辑设备");
             ApplyButtonPermissionStyle(btnEditTag, CanManageTags(), "Admin / Engineer 可编辑点位配置");
             ApplyButtonPermissionStyle(btnTestDeviceConnection, CanTestDeviceConnection(), "仅 Admin / Engineer 可测试设备连接");
-
+            ApplyButtonPermissionStyle(btnAddAlarmRule, CanManageAlarmRules(), "仅 Admin/ Engineer可新增报警规则");
         }
 
-        private void ApplyButtonPermissionStyle(Button button, bool allowed, string deniedTip)
+        private void ApplyButtonPermissionStyle(Sunny.UI.UIButton button, bool allowed, string deniedTip)
         {
-            button.Enabled = allowed;
-
+            button.StyleCustomMode = true;
             if (allowed)
             {
-                button.BackColor = Color.LightCoral;
+                button.FillColor = Color.LightCoral;
+                button.FillHoverColor = Color.Salmon;
+                button.FillPressColor = Color.IndianRed;
+                button.RectColor = Color.IndianRed;
                 button.ForeColor = Color.Black;
-                button.FlatStyle = FlatStyle.Standard;
                 toolTipPermissions.SetToolTip(button, "");
+                button.Enabled = true;
                 return;
             }
 
             // WinForms 禁用按钮默认对比度不明显，这里统一做成可识别的“无权限”样式。
-            button.BackColor = Color.Gainsboro;
+            button.FillColor = Color.Gainsboro;
+            button.FillDisableColor = Color.Gainsboro;
+            button.RectColor = Color.DarkGray;
+            button.RectDisableColor = Color.DarkGray;
             button.ForeColor = Color.DimGray;
-            button.FlatStyle = FlatStyle.Flat;
-            button.FlatAppearance.BorderColor = Color.DarkGray;
+            button.ForeDisableColor = Color.DimGray;
+            button.Enabled = false;
             toolTipPermissions.SetToolTip(button, deniedTip);
         }
 
@@ -214,6 +218,7 @@ namespace FactorySupervisor
                 dgvTags.Columns["ScanMs"].ReadOnly = false;
                 dgvTags.Columns["ArchiveEnabled"].ReadOnly = false;
                 dgvTags.Columns["Enabled"].ReadOnly = false;
+                dgvTags.Columns["ShowOnDashboard"].ReadOnly = false;
             }
 
             if (CanManageTagDefinition())
@@ -221,6 +226,11 @@ namespace FactorySupervisor
                 dgvTags.Columns["Name"].ReadOnly = false;
                 dgvTags.Columns["Address"].ReadOnly = false;
                 dgvTags.Columns["DataType"].ReadOnly = false;
+            }
+
+            if (dgvTags.Columns.Contains("ShowOnDashboard"))
+            {
+                dgvTags.Columns["ShowOnDashboard"].HeaderText = "首页卡片";
             }
         }
 
@@ -647,15 +657,20 @@ namespace FactorySupervisor
             await LoadTagsAsync();
         }
 
+        /// <summary>
+        /// 测试连接
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void btnTestDeviceConnection_Click(object sender, EventArgs e)
         {
-            if(!CanManageTags())
+            if (!CanManageTags())
             {
                 MessageBox.Show("当前用户没有测试连接的权限");
                 return;
             }
 
-            if(dgvDevices.CurrentRow?.DataBoundItem is not DeviceConfigRow row)
+            if (dgvDevices.CurrentRow?.DataBoundItem is not DeviceConfigRow row)
             {
                 MessageBox.Show("请先选择要测试的设备");
                 return;
@@ -686,7 +701,7 @@ namespace FactorySupervisor
 
             try
             {
-                await using var client= _clientFactory.Create(device.ProtocolType);
+                await using var client = _clientFactory.Create(device.ProtocolType);
 
                 using var cts = new CancellationTokenSource(row.TimeoutMs + 1000);
 
@@ -705,7 +720,7 @@ namespace FactorySupervisor
                     MessageBox.Show("串口打开成功，但该设备没有启用点位，无法验证从站响应");
                     return;
                 }
-                
+
                 var read = await client.ReadAsync(tags.Take(1).ToList(), cts.Token);
 
                 if (read.Success)
@@ -725,6 +740,48 @@ namespace FactorySupervisor
                     "TestDeviceConnectionError",
                     $"测试设备连接异常：{row.Name}，异常：{ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// 添加报警规则
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private async void btnAddAlarmRule_Click(object sender, EventArgs e)
+        {
+            if (!CanManageAlarmRules())
+            {
+                MessageBox.Show("当前用户没有新增报警规则的权限");
+                return;
+            }
+
+            var devices = await _configRepository.GetDevicesAsync();
+            var tags = await _configRepository.GetTagsAsync();
+
+            using var form = new AlarmRuleEditForm(devices, tags);
+
+            if (form.ShowDialog(this) != DialogResult.OK)
+            {
+                return;
+            }
+
+            if (form.CreatedRule is null)
+            {
+                return;
+            }
+
+            await _configRepository.InsertAlarmRuleAsync(form.CreatedRule);
+
+            await WriteAuditAsync(
+                "AddAlarmRule",
+                $"新增报警规则：{form.CreatedRule.Name}，点位Id：{form.CreatedRule.TagId}");
+
+            MessageBox.Show("新增报警规则成功");
+
+            await LoadAlarmRulesAsync();
+            ConfigureAlarmRuleGrid();
+
+            ConfigSaved?.Invoke(this, EventArgs.Empty);
         }
     }
 }

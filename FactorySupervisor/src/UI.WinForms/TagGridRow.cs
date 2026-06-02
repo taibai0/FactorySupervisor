@@ -21,5 +21,8 @@ namespace FactorySupervisor.src.UI.WinForms
         public string Quality { get; set; } = "None";
         public string Time { get; set; } = "";
         public string Error { get; set; } = "";
+        
+        public bool ShowOnDashboard { get; set; }
     }
 }
+                  

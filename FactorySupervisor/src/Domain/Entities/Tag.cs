@@ -17,8 +17,9 @@ namespace FactorySupervisor.src.Domain.Entities
         public TagDataType DataType { get; private set; }
         public int ScanMs { get; private set; }
         public bool ArchiveEnabled { get; private set; }
+        public bool ShowOnDashboard { get; set; }
 
-        public Tag(Guid deviceId, string name, string address, TagDataType dataType, int scanMs, bool archiveEnabled = true)
+        public Tag(Guid deviceId, string name, string address, TagDataType dataType, int scanMs, bool archiveEnabled = true,bool showOnDashboard = false)
         {
             if (deviceId == Guid.Empty) throw new ArgumentException("DeviceId is required.", nameof(deviceId));
             if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Tag name is required.", nameof(name));
@@ -31,6 +32,7 @@ namespace FactorySupervisor.src.Domain.Entities
             DataType = dataType;
             ScanMs = scanMs;
             ArchiveEnabled = archiveEnabled;
+            ShowOnDashboard = showOnDashboard;
         }
 
         public void SetScanMs(int scanMs)

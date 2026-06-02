@@ -1,4 +1,5 @@
 using FactorySupervisor.src.Contracts.Models;
+using FactorySupervisor.src.Domain.Entities;
 
 namespace FactorySupervisor
 {
@@ -13,6 +14,7 @@ namespace FactorySupervisor
         private readonly CheckBox chkEnabled = new();
         private readonly Button btnOk = new();
         private readonly Button btnCancel = new();
+        private readonly CheckBox chkShowOnDashboard = new();
 
         private readonly TagConfigRow? _editingTag;
 
@@ -72,6 +74,7 @@ namespace FactorySupervisor
             AddRow(table, 4, "采集周期(ms)", numScanMs);
             AddRow(table, 5, "历史归档", chkArchiveEnabled);
             AddRow(table, 6, "启用", chkEnabled);
+            AddRow(table, 7, "首页卡片", chkShowOnDashboard);
 
             var buttonPanel = new FlowLayoutPanel
             {
@@ -145,6 +148,7 @@ namespace FactorySupervisor
 
             chkArchiveEnabled.Checked = true;
             chkEnabled.Checked = true;
+            chkShowOnDashboard.Checked = false;
         }
 
         private void btnOk_Click(object? sender, EventArgs e)
@@ -165,6 +169,7 @@ namespace FactorySupervisor
                 DataType = cboDataType.Text,
                 ScanMs = ((int)numScanMs.Value).ToString(),
                 ArchiveEnabled = chkArchiveEnabled.Checked,
+                ShowOnDashboard = chkShowOnDashboard.Checked,
                 Enabled = chkEnabled.Checked
             };
 
