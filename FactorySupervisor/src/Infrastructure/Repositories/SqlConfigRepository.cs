@@ -58,6 +58,9 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                 Parity,
                 StopBits,
                 UnitId,
+                S7CpuType,
+                S7Rack,
+                S7Slot,
                 TimeoutMs
             FROM dbo.DeviceConfig
             ORDER BY Name;
@@ -68,18 +71,54 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                 Id = reader.GetGuid(reader.GetOrdinal("Id")),
                 Name = reader.GetString(reader.GetOrdinal("Name")),
                 ProtocolType = reader.GetString(reader.GetOrdinal("ProtocolType")),
-                Ip = reader.GetString(reader.GetOrdinal("Ip")),
-                Port = reader.GetInt32(reader.GetOrdinal("Port")),
-                Enabled = reader.GetBoolean(reader.GetOrdinal("Enabled")),
+                Ip = reader.IsDBNull(reader.GetOrdinal("Ip"))
+                    ? ""
+                    : reader.GetString(reader.GetOrdinal("Ip")),
+
+                Port = reader.IsDBNull(reader.GetOrdinal("Port"))
+                    ? 0
+                    : reader.GetInt32(reader.GetOrdinal("Port")),
+
+                Enabled = reader.GetBoolean(reader.GetOrdinal("Enabled")), 
+                
                 ComPort = reader.IsDBNull(reader.GetOrdinal("ComPort"))
                     ? ""
                     : reader.GetString(reader.GetOrdinal("ComPort")),
-                BaudRate = reader.GetInt32(reader.GetOrdinal("BaudRate")),
-                DataBits = reader.GetInt32(reader.GetOrdinal("DataBits")),
-                Parity = reader.GetString(reader.GetOrdinal("Parity")),
-                StopBits = reader.GetString(reader.GetOrdinal("StopBits")),
-                UnitId = reader.GetByte(reader.GetOrdinal("UnitId")),
-                TimeoutMs = reader.GetInt32(reader.GetOrdinal("TimeoutMs"))
+                BaudRate = reader.IsDBNull(reader.GetOrdinal("BaudRate"))
+                    ? 9600
+                    : reader.GetInt32(reader.GetOrdinal("BaudRate")),
+
+                DataBits = reader.IsDBNull(reader.GetOrdinal("DataBits"))
+                    ? 8
+                    : reader.GetInt32(reader.GetOrdinal("DataBits")),
+
+                Parity = reader.IsDBNull(reader.GetOrdinal("Parity"))
+                    ? "None"
+                    : reader.GetString(reader.GetOrdinal("Parity")),
+
+                StopBits = reader.IsDBNull(reader.GetOrdinal("StopBits"))
+                    ? "One"
+                    : reader.GetString(reader.GetOrdinal("StopBits")),
+
+                UnitId = reader.IsDBNull(reader.GetOrdinal("UnitId"))
+                    ? (byte)1
+                    : reader.GetByte(reader.GetOrdinal("UnitId")),
+
+                TimeoutMs = reader.IsDBNull(reader.GetOrdinal("TimeoutMs"))
+                    ? 1000
+                    : reader.GetInt32(reader.GetOrdinal("TimeoutMs")),
+
+                S7CpuType = reader.IsDBNull(reader.GetOrdinal("S7CpuType"))
+                    ? "S71200"
+                    : reader.GetString(reader.GetOrdinal("S7CpuType")),
+
+                S7Rack = reader.IsDBNull(reader.GetOrdinal("S7Rack"))
+                    ? 0
+                    : reader.GetInt32(reader.GetOrdinal("S7Rack")),
+
+                S7Slot = reader.IsDBNull(reader.GetOrdinal("S7Slot"))
+                    ? 1
+                    : reader.GetInt32(reader.GetOrdinal("S7Slot"))
             }, ct, []);
         }
 
@@ -197,6 +236,9 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                     Parity,
                     StopBits,
                     UnitId,
+                    S7CpuType,
+                    S7Rack,
+                    S7Slot,
                     TimeoutMs
                 )
                 VALUES
@@ -213,6 +255,9 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                     @Parity,
                     @StopBits,
                     @UnitId,
+                    @S7CpuType,
+                    @S7Rack,
+                    @S7Slot,
                     @TimeoutMs
                 );
                 """;
@@ -230,7 +275,10 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                new SqlParameter("@Parity", row.Parity),
                new SqlParameter("@StopBits", row.StopBits),
                new SqlParameter("@UnitId", row.UnitId),
-               new SqlParameter("@TimeoutMs", row.TimeoutMs)
+               new SqlParameter("@TimeoutMs", row.TimeoutMs),
+               new SqlParameter("@S7CpuType", row.S7CpuType),
+                new SqlParameter("@S7Rack", row.S7Rack),
+                new SqlParameter("@S7Slot", row.S7Slot)
             };
 
             return DbHelper.ExecuteNonQueryAsync(sql, ct, parameters);
@@ -257,8 +305,8 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                     DataType,
                     ScanMs,
                     ArchiveEnabled,
-                    ShowOnDashboard
-                    Enabled,
+                    ShowOnDashboard,
+                    Enabled
                 )
                 VALUES
                 (
@@ -338,6 +386,9 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                     Parity = @Parity,
                     StopBits = @StopBits,
                     UnitId = @UnitId,
+                    S7CpuType = @S7CpuType,
+                    S7Rack = @S7Rack,
+                    S7Slot = @S7Slot,
                     TimeoutMs = @TimeoutMs
                 WHERE Id = @Id;
                 """;
@@ -356,8 +407,10 @@ namespace FactorySupervisor.src.Infrastructure.Repositories
                 new SqlParameter("@Parity",SqlDbType.Text){Value = row.Parity},
                 new SqlParameter("@StopBits",SqlDbType.Text){Value = row.StopBits},
                 new SqlParameter("@UnitId",row.UnitId),
-                new SqlParameter("@TimeoutMs",SqlDbType.Int){Value = row.TimeoutMs}
-
+                new SqlParameter("@TimeoutMs",SqlDbType.Int){Value = row.TimeoutMs},
+                new SqlParameter("@S7CpuType",SqlDbType.Text){Value = row.S7CpuType},
+                new SqlParameter("@S7Rack",SqlDbType.Int){Value = row.S7Rack},
+                new SqlParameter("@S7Slot",SqlDbType.Int){Value = row.S7Slot}
             };
 
             return DbHelper.ExecuteNonQueryAsync(sql,ct,parameters);

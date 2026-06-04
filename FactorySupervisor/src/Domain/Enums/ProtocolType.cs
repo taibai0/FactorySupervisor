@@ -11,6 +11,6 @@ namespace FactorySupervisor.src.Domain.Enums
         ModbusTcp=1,
         ModbusRtu=2,
         S7=3,
-        Simulator=99
+        OpcUa = 4
     }
 }

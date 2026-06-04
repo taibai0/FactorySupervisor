@@ -29,17 +29,23 @@ namespace FactorySupervisor
         {
             Text = "新增报警规则";
             StartPosition = FormStartPosition.CenterParent;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
+            FormBorderStyle = FormBorderStyle.Sizable;
+            MaximizeBox = true;
             MinimizeBox = false;
-            ClientSize = new Size(620, 390);
+            ClientSize = new Size(720, 430);
+            MinimumSize = new Size(620, 390);
+
+            var root = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(24)
+            };
 
             var table = new UITableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(24, 28, 24, 18),
                 ColumnCount = 2,
-                RowCount = 7
+                RowCount = 6
             };
 
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130));
@@ -54,7 +60,8 @@ namespace FactorySupervisor
 
             var buttonPanel = new UIFlowLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Bottom,
+                Height = 52,
                 FlowDirection = FlowDirection.RightToLeft,
                 Padding = new Padding(0, 8, 0, 0)
             };
@@ -73,14 +80,15 @@ namespace FactorySupervisor
 
             buttonPanel.Controls.Add(btnOk);
             buttonPanel.Controls.Add(btnCancel);
-            table.Controls.Add(buttonPanel, 1, 6);
 
-            Controls.Add(table);
+            root.Controls.Add(table);
+            root.Controls.Add(buttonPanel);
+            Controls.Add(root);
         }
 
         private static void AddRow(TableLayoutPanel table, int rowIndex, string labelText, Control editor)
         {
-            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 46));
+            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
 
             var label = new UILabel
             {
@@ -90,7 +98,7 @@ namespace FactorySupervisor
             };
 
             editor.Dock = DockStyle.Fill;
-            editor.Margin = new Padding(0, 4, 0, 4);
+            editor.Margin = new Padding(0, 5, 0, 5);
 
             table.Controls.Add(label, 0, rowIndex);
             table.Controls.Add(editor, 1, rowIndex);
@@ -105,7 +113,7 @@ namespace FactorySupervisor
             cboTag.DisplayMember = nameof(AlarmTagOption.DisplayName);
             cboTag.SelectedIndexChanged += (_, _) => FillDefaultRuleName();
 
-            txtName.Watermark = "例如：温度高报警";
+            txtName.Watermark = "例如：液位过低";
 
             cboLevel.DropDownStyle = UIDropDownStyle.DropDownList;
             cboLevel.Items.AddRange(Enum.GetNames(typeof(AlarmLevel)));

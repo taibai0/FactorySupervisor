@@ -31,7 +31,10 @@ namespace FactorySupervisor.src.Domain.Entities
 
         public int TimeoutMs { get; private set; } = 1000;
 
-
+        //s7
+        public string? S7CpuType { get; private set; }
+        public int? S7Rack { get; private set; }
+        public int? S7Slot { get; private set; }
 
 
 
@@ -71,6 +74,33 @@ namespace FactorySupervisor.src.Domain.Entities
             StopBits = stopBits.Trim();
             UnitId = unitId;
             TimeoutMs = timeoutMs;
+        }
+
+        public void ConfigureS7(string cpuType, int rack, int slot)
+        {
+            if (ProtocolType != ProtocolType.S7)
+            {
+                throw new InvalidOperationException("Only S7 devices can configure S7 settings.");
+            }
+
+            if (string.IsNullOrWhiteSpace(cpuType))
+            {
+                throw new ArgumentException("S7 CPU type is required.", nameof(cpuType));
+            }
+
+            if (rack < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(rack), "Rack cannot be negative.");
+            }
+
+            if (slot < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(slot), "Slot cannot be negative.");
+            }
+
+            S7CpuType = cpuType;
+            S7Rack = rack;
+            S7Slot = slot;
         }
     }
 }

@@ -17,6 +17,7 @@ namespace FactorySupervisor.src.Infrastructure.Protocol
             return protocolType switch
             {
                 ProtocolType.ModbusRtu => new ModBusRtuProtocolClient(),
+                ProtocolType.S7 => new S7ProtocolClient(),
                 _ => throw new NotSupportedException($"Protocol type {protocolType} is not supported.")
             };
         }

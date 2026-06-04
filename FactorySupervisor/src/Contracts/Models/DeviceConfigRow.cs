@@ -21,5 +21,9 @@ namespace FactorySupervisor.src.Contracts.Models
         public string StopBits { get; set; } = "";
         public byte UnitId { get; set; }
         public int TimeoutMs { get; set; }
+
+        public string S7CpuType { get; set; } = "";
+        public int S7Rack { get; set; }
+        public int S7Slot { get; set; }
     }
 }

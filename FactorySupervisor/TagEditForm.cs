@@ -1,5 +1,4 @@
 using FactorySupervisor.src.Contracts.Models;
-using FactorySupervisor.src.Domain.Entities;
 
 namespace FactorySupervisor
 {
@@ -12,9 +11,9 @@ namespace FactorySupervisor
         private readonly NumericUpDown numScanMs = new();
         private readonly CheckBox chkArchiveEnabled = new();
         private readonly CheckBox chkEnabled = new();
+        private readonly CheckBox chkShowOnDashboard = new();
         private readonly Button btnOk = new();
         private readonly Button btnCancel = new();
-        private readonly CheckBox chkShowOnDashboard = new();
 
         private readonly TagConfigRow? _editingTag;
 
@@ -26,7 +25,7 @@ namespace FactorySupervisor
             InitializeDefaults(devices);
         }
 
-        public TagEditForm(IReadOnlyList<DeviceConfigRow> devices,TagConfigRow tag)
+        public TagEditForm(IReadOnlyList<DeviceConfigRow> devices, TagConfigRow tag)
         {
             InitializeUi();
             InitializeDefaults(devices);
@@ -39,29 +38,37 @@ namespace FactorySupervisor
             txtAddress.Text = tag.Address;
             cboDataType.Text = tag.DataType;
 
-            if(int.TryParse(tag.ScanMs,out var scanMs))
+            if (int.TryParse(tag.ScanMs, out var scanMs))
             {
                 numScanMs.Value = Math.Clamp(scanMs, (int)numScanMs.Minimum, (int)numScanMs.Maximum);
             }
 
-            chkArchiveEnabled.Checked=tag.ArchiveEnabled;
-            chkEnabled.Checked=tag.Enabled;
+            chkArchiveEnabled.Checked = tag.ArchiveEnabled;
+            chkShowOnDashboard.Checked = tag.ShowOnDashboard;
+            chkEnabled.Checked = tag.Enabled;
         }
+
         private void InitializeUi()
         {
             Text = "新增点位";
             StartPosition = FormStartPosition.CenterParent;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
+            FormBorderStyle = FormBorderStyle.Sizable;
+            MaximizeBox = true;
             MinimizeBox = false;
-            ClientSize = new Size(520, 360);
+            ClientSize = new Size(620, 430);
+            MinimumSize = new Size(520, 380);
+
+            var root = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(18)
+            };
 
             var table = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(18),
                 ColumnCount = 2,
-                RowCount = 9
+                RowCount = 8
             };
 
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
@@ -73,13 +80,15 @@ namespace FactorySupervisor
             AddRow(table, 3, "数据类型", cboDataType);
             AddRow(table, 4, "采集周期(ms)", numScanMs);
             AddRow(table, 5, "历史归档", chkArchiveEnabled);
-            AddRow(table, 6, "启用", chkEnabled);
-            AddRow(table, 7, "首页卡片", chkShowOnDashboard);
+            AddRow(table, 6, "首页卡片", chkShowOnDashboard);
+            AddRow(table, 7, "启用", chkEnabled);
 
             var buttonPanel = new FlowLayoutPanel
             {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.RightToLeft
+                Dock = DockStyle.Bottom,
+                Height = 48,
+                FlowDirection = FlowDirection.RightToLeft,
+                Padding = new Padding(0, 8, 0, 0)
             };
 
             btnOk.Text = "确定";
@@ -93,8 +102,9 @@ namespace FactorySupervisor
             buttonPanel.Controls.Add(btnOk);
             buttonPanel.Controls.Add(btnCancel);
 
-            table.Controls.Add(buttonPanel, 1, 8);
-            Controls.Add(table);
+            root.Controls.Add(table);
+            root.Controls.Add(buttonPanel);
+            Controls.Add(root);
 
             AcceptButton = btnOk;
             CancelButton = btnCancel;
@@ -102,7 +112,7 @@ namespace FactorySupervisor
 
         private static void AddRow(TableLayoutPanel table, int rowIndex, string labelText, Control editor)
         {
-            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
 
             var label = new Label
             {
@@ -112,6 +122,7 @@ namespace FactorySupervisor
             };
 
             editor.Dock = DockStyle.Fill;
+            editor.Margin = new Padding(0, 5, 0, 5);
 
             table.Controls.Add(label, 0, rowIndex);
             table.Controls.Add(editor, 1, rowIndex);
@@ -147,8 +158,8 @@ namespace FactorySupervisor
             numScanMs.Value = 1000;
 
             chkArchiveEnabled.Checked = true;
-            chkEnabled.Checked = true;
             chkShowOnDashboard.Checked = false;
+            chkEnabled.Checked = true;
         }
 
         private void btnOk_Click(object? sender, EventArgs e)
